@@ -3,3 +3,6 @@
 bin/
 build/
 out/
+tools/
+
+.protoc-version
