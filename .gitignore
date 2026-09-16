@@ -6,3 +6,4 @@ out/
 tools/
 
 .protoc-version
+compile_commands.json
