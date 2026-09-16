@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package strix.v1;
+
+enum CacheState {
+    UNSPECIFIED = 0;
+    HIT = 1;
+    MISS = 2;
+    PENDING = 3;
+    REJECTED = 4;
+}
+
+message CheckCacheRequest {
+    bytes prompt = 1;  // Unescaped and unnormalized
+}
+
+message CheckCacheResponse {
+    CacheState check_state = 1;
+    uint32 node_id = 2;
+    bytes cached_payload = 3 [ctype = CORD];
+}
+
+message SetCacheRequest {
+    uint32 node_id = 1;
+    bytes uncached payload = 2;
+}
+
+message SetCacheResponse {
+    bool success = 1;
+}
+
+service CacheService {
+    rpc CheckCache(CheckCacheRequest) returns (CheckCacheResponse);  // READ
+    rpc SetCache(SetCacheRequest) returns (SetCacheResponse);  // WRITE
+}
