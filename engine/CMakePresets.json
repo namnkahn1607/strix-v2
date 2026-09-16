@@ -1,0 +1,82 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 28
+    },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "/usr/bin/clang-18",
+                "CMAKE_CXX_COMPILER": "/usr/bin/clang++-18",
+                "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld-18",
+                "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld-18",
+                "CMAKE_MODULE_LINKER_FLAGS": "-fuse-ld=lld-18",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "base-dbg",
+            "hidden": true,
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "base-rel",
+            "hidden": true,
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "debug",
+            "inherits": "base-dbg",
+            "displayName": "Debug",
+            "binaryDir": "${sourceDir}/build/debug"
+        },
+        {
+            "name": "release",
+            "inherits": "base-rel",
+            "displayName": "Release",
+            "binaryDir": "${sourceDir}/build/release"
+        },
+        {
+            "name": "asan",
+            "inherits": "base-dbg",
+            "displayName": "Address Sanitizer",
+            "binaryDir": "${sourceDir}/build/asan",
+            "cacheVariables": {
+                "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -g -gsplit-dwarf -O1 -fno-omit-frame-pointer",
+                "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld-18 -fsanitize=address,undefined"
+            }
+        },
+        {
+            "name": "tsan",
+            "inherits": "base-dbg",
+            "displayName": "Thread Sanitizer",
+            "binaryDir": "${sourceDir}/build/tsan",
+            "cacheVariables": {
+                "CMAKE_CXX_FLAGS": "-fsanitize=thread -g -gsplit-dwarf -O1",
+                "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld-18 -fsanitize=thread"
+            }
+        }
+    ],
+    "buildPresets": [
+        { "name": "debug", "configurePreset": "debug", "jobs": 4 },
+        { "name": "release", "configurePreset": "release", "jobs": 4 },
+        { "name": "asan", "configurePreset": "asan", "jobs": 4 },
+        { "name": "tsan", "configurePreset": "tsan", "jobs": 4 }
+    ],
+    "testPresets": [
+        { "name": "debug", "configurePreset": "debug", "output": { "outputOnFailure": true } },
+        { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } },
+        { "name": "asan", "configurePreset": "asan", "output": { "outputOnFailure": true } },
+        { "name": "tsan", "configurePreset": "tsan", "output": { "outputOnFailure": true } } 
+    ]
+}
