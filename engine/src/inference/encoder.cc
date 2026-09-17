@@ -1,4 +1,4 @@
-#include "inference/sentence_encoder.h"
+#include "inference/encoder.h"
 
 #include <array>
 #include <cmath>
