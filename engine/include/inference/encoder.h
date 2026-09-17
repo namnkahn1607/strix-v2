@@ -35,8 +35,8 @@ private:
     Ort::Env            env_;
     Ort::SessionOptions options_;
 
-    mutable Ort::Session tok_session_;   // Tokenizer
-    mutable Ort::Session bert_session_;  // Transformer
+    mutable Ort::Session tok_session_{nullptr};   // Tokenizer
+    mutable Ort::Session bert_session_{nullptr};  // Transformer
 };
 
 };  // namespace strix::inference
