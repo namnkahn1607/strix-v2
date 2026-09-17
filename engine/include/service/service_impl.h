@@ -5,13 +5,13 @@
 
 #include "cache.grpc.pb.h"
 #include "cache.pb.h"
+#include "inference/encoder.h"
 
 namespace strix::service {
 
 class CacheServiceImpl final : public strix::v1::CacheService::Service {
 public:
-    explicit CacheServiceImpl() = default;
-    ~CacheServiceImpl()         = default;
+    explicit CacheServiceImpl(const inference::Encoder& encoder);
 
     grpc::Status CheckCache(
         grpc::ServerContext*                context,
@@ -23,6 +23,9 @@ public:
         grpc::ServerContext* context, const strix::v1::SetCacheRequest* request,
         strix::v1::SetCacheResponse* response
     ) override;
+
+private:
+    const inference::Encoder& encoder_;
 };
 
 }  // namespace strix::service

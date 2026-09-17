@@ -25,5 +25,5 @@ target_include_directories(engine_contract PUBLIC "${PROTO_GEN_DIR}")
 
 add_module(service
     SOURCES service_impl.cc
-    DEPS_PRIVATE engine_options
+    DEPS_PRIVATE engine_options engine_inference
     DEPS_PUBLIC  engine_contract)
