@@ -17,6 +17,7 @@ target_compile_options(engine_options INTERFACE
     -march=x86-64-v3 -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wunreachable-code
 )
 
+add_subdirectory(src/inference)
 add_subdirectory(src/service)
 
 add_executable(strix_engine src/main.cc)
