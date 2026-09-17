@@ -22,7 +22,7 @@ message CheckCacheResponse {
 
 message SetCacheRequest {
     uint32 node_id = 1;
-    bytes uncached payload = 2;
+    bytes uncached_payload = 2;
 }
 
 message SetCacheResponse {
