@@ -2,6 +2,7 @@
 .vscode/
 bin/
 build/
+ort/
 out/
 tools/
 
