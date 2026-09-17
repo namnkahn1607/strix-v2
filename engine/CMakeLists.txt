@@ -21,7 +21,9 @@ add_subdirectory(src/inference)
 add_subdirectory(src/service)
 
 add_executable(strix_engine src/main.cc)
-target_link_libraries(strix_engine PRIVATE engine_options engine_service)
+target_link_libraries(strix_engine
+    PRIVATE engine_options engine_service engine_inference
+)
 
 if(CMAKE_EXPORT_COMPILE_COMMANDS)
     file(CREATE_LINK "${CMAKE_BINARY_DIR}/compile_commands.json"

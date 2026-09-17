@@ -7,7 +7,7 @@ set_target_properties(ONNXRuntime PROPERTIES
 )
 
 add_module(inference
-    SOURCES sentence_encoder.cc
+    SOURCES encoder.cc
     DEPS_PUBLIC  ONNXRuntime
     DEPS_PRIVATE engine_options
 )
