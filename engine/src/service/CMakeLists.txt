@@ -19,13 +19,11 @@ add_custom_command(
 )
 
 add_library(engine_contract STATIC
-    "${PROTO_GEN_DIR}/cache.pb.cc" "${PROTO_GEN_DIR}/cache.grpc.pb.cc"
-)
+    "${PROTO_GEN_DIR}/cache.pb.cc" "${PROTO_GEN_DIR}/cache.grpc.pb.cc")
 target_link_libraries(engine_contract PUBLIC gRPC::grpc++ protobuf::libprotobuf)
 target_include_directories(engine_contract PUBLIC "${PROTO_GEN_DIR}")
 
 add_module(service
     SOURCES service_impl.cc
     DEPS_PRIVATE engine_options
-    DEPS_PUBLIC  engine_contract
-)
+    DEPS_PUBLIC  engine_contract)

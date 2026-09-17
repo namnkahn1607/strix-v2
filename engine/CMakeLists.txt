@@ -14,16 +14,14 @@ set(PUBLIC_HEADER_ROOT "${CMAKE_SOURCE_DIR}/include")
 
 add_library(engine_options INTERFACE)
 target_compile_options(engine_options INTERFACE
-    -march=x86-64-v3 -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wunreachable-code
-)
+    -march=x86-64-v3 -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wunreachable-code)
 
 add_subdirectory(src/inference)
 add_subdirectory(src/service)
 
 add_executable(strix_engine src/main.cc)
 target_link_libraries(strix_engine
-    PRIVATE engine_options engine_service engine_inference
-)
+    PRIVATE engine_options engine_service engine_inference)
 
 if(CMAKE_EXPORT_COMPILE_COMMANDS)
     file(CREATE_LINK "${CMAKE_BINARY_DIR}/compile_commands.json"
