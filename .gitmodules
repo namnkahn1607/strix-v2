@@ -2,3 +2,8 @@
 	path = engine/vendor/vcpkg
 	url = https://github.com/microsoft/vcpkg
     shallow = true
+[submodule "engine/vendor/onnxruntime"]
+	path = engine/vendor/onnxruntime
+	url = https://github.com/microsoft/onnxruntime.git
+    ignore = dirty
+    shallow = true
