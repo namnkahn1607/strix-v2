@@ -64,8 +64,8 @@ bootstrap_ort() {
     log "Building onnxruntime. Might take a while"
     (
         cd "$ORT_SRC_DIR"
-        export CC=/usr/bin/clang-18
-        export CXX=/usr/bin/clang++-18
+        export CC=/usr/bin/clang
+        export CXX=/usr/bin/clang++
         ./build.sh \
             --cmake_path "$cmake_bin" \
             --cmake_generator Ninja \
