@@ -1,5 +1,6 @@
 #include "inference/encoder.h"
 
+#include <absl/log/check.h>
 #include <onnxruntime_cxx_api.h>
 
 #include <array>
@@ -31,12 +32,8 @@ Ort::SessionOptions Encoder::CustomizeOptions() {
 Encoder::Encoder(const char* tok_path, const char* bert_path)
     : env_{Ort::Env(ORT_LOGGING_LEVEL_ERROR, "onnx-env")}
     , options_{CustomizeOptions()} {
-    if (tok_path == nullptr) {
-        throw std::invalid_argument("Tokenizer path is omitted");
-    }
-    if (bert_path == nullptr) {
-        throw std::invalid_argument("Transfomer path is omitted");
-    }
+    CHECK(tok_path != nullptr) << "Tokenizer path is omitted";
+    CHECK(bert_path != nullptr) << "Transformer path is omitted";
 
     tok_session_  = Ort::Session{env_, tok_path, options_};
     bert_session_ = Ort::Session{env_, bert_path, options_};
