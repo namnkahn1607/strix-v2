@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Setup environment for local development in strix/engine.
-
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"  # strix/
