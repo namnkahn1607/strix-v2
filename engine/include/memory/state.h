@@ -16,7 +16,7 @@ enum class NodeState : std::uint8_t {
 inline constexpr std::chrono::seconds kPendingLifespan{30};
 
 // CLOCK reference bit of a node slot.
-enum class EvictState : std::uint8_t {
+enum class RefBit : std::uint8_t {
     kCold = 0,
     kHot  = 1,
 };
