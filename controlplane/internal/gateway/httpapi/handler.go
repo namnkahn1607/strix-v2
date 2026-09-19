@@ -21,6 +21,7 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 	reqBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
 	}
 
 	// Assume the path to the client's request prompt was only `/prompt/`.
