@@ -8,7 +8,7 @@ import (
 )
 
 type Job struct {
-	SlotId  uint32
+	NodeId  uint32
 	Payload []byte
 }
 
@@ -72,7 +72,7 @@ func (wp *WorkerPool) startWorker(stub pb.CacheServiceClient) {
 	for job := range wp.queue {
 		ctx, cancel := context.WithTimeout(context.Background(), engineTimeout)
 		_, _ = stub.SetCache(ctx, &pb.SetCacheRequest{ // Should handle error
-			SlotId:          job.SlotId,
+			NodeId:          job.NodeId,
 			UncachedPayload: job.Payload,
 		})
 		cancel()

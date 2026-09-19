@@ -126,7 +126,7 @@ func (x *CheckCacheRequest) GetPrompt() []byte {
 type CheckCacheResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CheckState    CacheState             `protobuf:"varint,1,opt,name=check_state,json=checkState,proto3,enum=strix.v1.CacheState" json:"check_state,omitempty"`
-	SlotId        uint32                 `protobuf:"varint,2,opt,name=slot_id,json=slotId,proto3" json:"slot_id,omitempty"`
+	NodeId        uint32                 `protobuf:"varint,2,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 	CachedPayload []byte                 `protobuf:"bytes,3,opt,name=cached_payload,json=cachedPayload,proto3" json:"cached_payload,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -169,9 +169,9 @@ func (x *CheckCacheResponse) GetCheckState() CacheState {
 	return CacheState_UNSPECIFIED
 }
 
-func (x *CheckCacheResponse) GetSlotId() uint32 {
+func (x *CheckCacheResponse) GetNodeId() uint32 {
 	if x != nil {
-		return x.SlotId
+		return x.NodeId
 	}
 	return 0
 }
@@ -185,7 +185,7 @@ func (x *CheckCacheResponse) GetCachedPayload() []byte {
 
 type SetCacheRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	SlotId          uint32                 `protobuf:"varint,1,opt,name=slot_id,json=slotId,proto3" json:"slot_id,omitempty"`
+	NodeId          uint32                 `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 	UncachedPayload []byte                 `protobuf:"bytes,2,opt,name=uncached_payload,json=uncachedPayload,proto3" json:"uncached_payload,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
@@ -221,9 +221,9 @@ func (*SetCacheRequest) Descriptor() ([]byte, []int) {
 	return file_cache_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *SetCacheRequest) GetSlotId() uint32 {
+func (x *SetCacheRequest) GetNodeId() uint32 {
 	if x != nil {
-		return x.SlotId
+		return x.NodeId
 	}
 	return 0
 }
@@ -289,10 +289,10 @@ const file_cache_proto_rawDesc = "" +
 	"\x12CheckCacheResponse\x125\n" +
 	"\vcheck_state\x18\x01 \x01(\x0e2\x14.strix.v1.CacheStateR\n" +
 	"checkState\x12\x17\n" +
-	"\aslot_id\x18\x02 \x01(\rR\x06slotId\x12)\n" +
+	"\anode_id\x18\x02 \x01(\rR\x06nodeId\x12)\n" +
 	"\x0ecached_payload\x18\x03 \x01(\fB\x02\b\x01R\rcachedPayload\"U\n" +
 	"\x0fSetCacheRequest\x12\x17\n" +
-	"\aslot_id\x18\x01 \x01(\rR\x06slotId\x12)\n" +
+	"\anode_id\x18\x01 \x01(\rR\x06nodeId\x12)\n" +
 	"\x10uncached_payload\x18\x02 \x01(\fR\x0funcachedPayload\",\n" +
 	"\x10SetCacheResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess*]\n" +
