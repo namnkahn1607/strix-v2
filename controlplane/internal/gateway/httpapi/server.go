@@ -1,15 +1,20 @@
 package httpapi
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"strix/internal/gateway/pb"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Gateway struct {
-	stub pb.CacheServiceClient
+	stub   pb.CacheServiceClient
+	server *http.Server
 }
 
 func NewGateway() (*Gateway, func() error, error) {
@@ -21,4 +26,19 @@ func NewGateway() (*Gateway, func() error, error) {
 	}
 
 	return &Gateway{stub: pb.NewCacheServiceClient(conn)}, conn.Close, nil
+}
+
+func (gw *Gateway) Run() error {
+	var runErr error
+	runErr = gw.server.ListenAndServe()
+
+	const shutdownTimeout = 3 * time.Second
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer shutdownCancel()
+
+	if err := gw.server.Shutdown(shutdownCtx); err != nil {
+		return errors.Join(runErr, err)
+	}
+
+	return runErr
 }

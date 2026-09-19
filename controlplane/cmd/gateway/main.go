@@ -1,7 +1,14 @@
 package main
 
-import "fmt"
+import "strix/internal/gateway/httpapi"
 
 func main() {
-	fmt.Println("Hello, this is Strix Gateway!")
+	gw, closer, err := httpapi.NewGateway()
+	if err != nil {
+		panic(err.Error())
+	}
+	defer closer()
+	if err = gw.Run(); err != nil {
+		panic(err.Error())
+	}
 }
