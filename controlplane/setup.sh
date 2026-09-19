@@ -2,8 +2,6 @@
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"  # strix/
-PROJECT_ROOT="$REPO_ROOT/control_plane"
-cd "$PROJECT_ROOT"
 
 log()  { echo "[INFO] $*" >&2; }
 warn() { echo "[WARN] $*" >&2; }
