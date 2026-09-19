@@ -8,5 +8,6 @@ ort/
 out/
 tools/
 
+.env
 .protoc-version
 compile_commands.json
