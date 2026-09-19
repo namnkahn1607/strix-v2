@@ -9,7 +9,8 @@ enum CacheState {
     HIT = 1;
     MISS = 2;
     PENDING = 3;
-    REJECTED = 4;
+    OVERFLOWN = 4;
+    DEGENERATED = 5;
 }
 
 message CheckCacheRequest {
@@ -18,12 +19,12 @@ message CheckCacheRequest {
 
 message CheckCacheResponse {
     CacheState check_state = 1;
-    uint32 node_id = 2;
+    uint32 slot_id = 2;
     bytes cached_payload = 3 [ctype = CORD];
 }
 
 message SetCacheRequest {
-    uint32 node_id = 1;
+    uint32 slot_id = 1;
     bytes uncached_payload = 2;
 }
 
