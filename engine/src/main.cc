@@ -1,3 +1,4 @@
+#include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 
@@ -24,6 +25,8 @@ int main() {
     inference::Encoder        encoder{tok_path, bert_path};
     service::CacheServiceImpl service{encoder};
 
+    grpc::EnableDefaultHealthCheckService(true);
+
     grpc::ServerBuilder builder;
     builder.AddListeningPort(kServerAddr, grpc::InsecureServerCredentials());
     builder.RegisterService(&service);
@@ -37,6 +40,13 @@ int main() {
     }
 
     std::cout << "Opening gRPC server - listening on " << kServerAddr << '\n';
+
+    grpc::HealthCheckServiceInterface* health_service =
+        server->GetHealthCheckService();
+    if (health_service) {
+        // Mark service as SERVING - ready to accept requests.
+        health_service->SetServingStatus("strix.v1.CacheService", true);
+    }
 
     const auto deadline = std::chrono::system_clock::now() + kShutdownTimeout;
     server->Shutdown(deadline);
