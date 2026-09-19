@@ -1,7 +1,14 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"strix/internal/supervisor/cli"
+)
 
 func main() {
-	fmt.Printf("Hello, this is Strix Supervisor!")
+	if err := cli.Execute(); err != nil {
+		fmt.Fprint(os.Stderr, "Error executing root command: %w\n", err)
+		os.Exit(1)
+	}
 }
