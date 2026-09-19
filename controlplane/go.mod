@@ -13,6 +13,7 @@ require (
 )
 
 require (
+	github.com/buger/jsonparser v1.6.1
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
