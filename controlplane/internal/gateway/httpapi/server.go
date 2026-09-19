@@ -25,7 +25,24 @@ func NewGateway() (*Gateway, func() error, error) {
 		return nil, nil, fmt.Errorf("gRPC connection error: %w", err)
 	}
 
-	return &Gateway{stub: pb.NewCacheServiceClient(conn)}, conn.Close, nil
+	const (
+		endpoint = "/v1/cache/strix"
+		port     = ":8080"
+	)
+
+	gw := &Gateway{}
+	mux := http.NewServeMux()
+	mux.HandleFunc(endpoint, gw.Handle)
+	gw.server = &http.Server{
+		Addr:              port,
+		Handler:           mux,
+		ReadHeaderTimeout: 3 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	return gw, conn.Close, nil
 }
 
 func (gw *Gateway) Run() error {
