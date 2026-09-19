@@ -32,18 +32,18 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	const engineTimeout = 50 * time.Millisecond
-	checkCtx, checkCancel := context.WithTimeout(r.Context(), engineTimeout)
-	defer checkCancel()
+	ctx, cancel := context.WithTimeout(r.Context(), engineTimeout)
+	defer cancel()
 
-	checkRes, err := gw.stub.CheckCache(checkCtx, &pb.CheckCacheRequest{Prompt: promptStr})
+	resp, err := gw.stub.CheckCache(ctx, &pb.CheckCacheRequest{Prompt: promptStr})
 	if err != nil {
 		// Upstream fallback
 		return
 	}
 
-	switch checkRes.GetCheckState() {
+	switch resp.GetCheckState() {
 	case pb.CacheState_HIT:
-		respondDownstream(w, checkRes.GetCachedPayload())
+		respondDownstream(w, resp.GetCachedPayload())
 
 	case pb.CacheState_PENDING: // Herd control
 	case pb.CacheState_MISS: // Herd control
