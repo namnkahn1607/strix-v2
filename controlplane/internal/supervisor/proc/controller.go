@@ -7,115 +7,116 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 type Controller struct{}
 
-func (c *Controller) Run() error {
-	ctx, cancel := context.WithCancel(context.Background())
+func NewController() *Controller {
+	return &Controller{}
+}
+
+func Execute() error {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-
-	// Trap SIGINT / SIGTERM from OS.
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(sigChan)
-
-	go func() {
-		select {
-		case <-sigChan:
-			cancel()
-		case <-ctx.Done():
-			// Controller.Run() returned normally. Goroutine exits.
-		}
-	}()
 
 	paths, err := loadPath()
 	if err != nil {
 		return err
 	}
 
-	deathChan := make(chan *exec.Cmd, 2)
+	const numChildProcs = 2
+	active := make(map[int]*exec.Cmd, numChildProcs)
+	deathChan := make(chan int, numChildProcs)
 
 	// Fork Engine process.
 	readC, writeC, err := os.Pipe()
 	if err != nil {
-		return fmt.Errorf("cannot create Engine death pipe: %w", err)
+		return fmt.Errorf("engine death pipe: %w", err)
 	}
+	defer writeC.Close()
 
 	engineEnv := append(os.Environ(),
-		"TOKENIZER_PATH"+paths.tokenizer,
-		"TRANSFORMER_PATH"+paths.transformer)
-
-	engineProc, err := forkProc(paths.engine, readC, engineEnv)
+		"TOKENIZER_PATH="+paths.tokenizer, "TRANSFORMER_PATH="+paths.transformer)
+	engineCmd, err := fork(paths.engine, readC, engineEnv)
+	_ = readC.Close()
 	if err != nil {
-		closePipeEnds(readC, writeC)
 		return err
 	}
-
-	waitProc(deathChan, engineProc)
-	closePipeEnds(readC)
+	active[engineCmd.Process.Pid] = engineCmd
+	supervise(engineCmd, deathChan)
 
 	// Fork Gateway process.
 	readB, writeB, err := os.Pipe()
 	if err != nil {
-		return fmt.Errorf("cannot create Gateway death pipe, %w", err)
+		return fmt.Errorf("gateway death pipe: %w", err)
 	}
+	defer writeB.Close()
 
-	gatewayEnv := []string{}
-
-	gatewayProc, err := forkProc(paths.gateway, readB, gatewayEnv)
+	gatewayCmd, err := fork(paths.gateway, readB, nil)
+	_ = readB.Close()
 	if err != nil {
-		closePipeEnds(readB, writeB, writeC)
 		return err
 	}
+	active[gatewayCmd.Process.Pid] = gatewayCmd
+	supervise(gatewayCmd, deathChan)
 
-	waitProc(deathChan, gatewayProc)
-	closePipeEnds(readB)
-
-	// React to the first event: either OS signal or child death.
+	// Event loop: react to the first event occur.
 	select {
 	case <-ctx.Done(): // OS signals
-		closePipeEnds(writeB, writeC)
-		// Drain child processes.
 
-	case deadProc := <-deathChan:
-		// Shutdown signal to all remaining children.
-		closePipeEnds(writeB, writeC)
-
-		switch deadProc {
-		case engineProc:
-			// Wait then kill Gateway in case timeout.
-
-		case gatewayProc:
-			// Wait then kill Engine in case timeout.
-		}
+	case pid := <-deathChan:
+		delete(active, pid)
 	}
 
+	// Shutdown signals to ALL child processes.
+	_ = writeC.Close()
+	_ = writeB.Close()
+
+	drain(active, deathChan)
 	return nil
 }
 
-func closePipeEnds(ends ...*os.File) {
-	for _, end := range ends {
-		end.Close()
-	}
-}
-
-func forkProc(binPath string, readEnd *os.File, env []string) (*exec.Cmd, error) {
+func fork(binPath string, pipe *os.File, env []string) (*exec.Cmd, error) {
 	cmd := exec.Command(binPath)
-	cmd.ExtraFiles = []*os.File{readEnd}
+	cmd.ExtraFiles = []*os.File{pipe}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = env
 
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("cannot start process at %q: %w", binPath, err)
+		return nil, fmt.Errorf("spawn process %q: %w", binPath, err)
 	}
 	return cmd, nil
 }
 
-func waitProc(deathChan chan<- *exec.Cmd, proc *exec.Cmd) {
+func supervise(cmd *exec.Cmd, deathChan chan<- int) {
 	go func() {
-		proc.Wait() // Should handle error
-		deathChan <- proc
+		_ = cmd.Wait()
+		deathChan <- cmd.Process.Pid
 	}()
+}
+
+func drain(active map[int]*exec.Cmd, deathChan <-chan int) {
+	if len(active) == 0 {
+		return
+	}
+
+	const drainTimeout = 6 * time.Second
+	timer := time.NewTimer(drainTimeout)
+	defer timer.Stop()
+
+	for len(active) > 0 {
+		select {
+		case pid := <-deathChan:
+			delete(active, pid)
+
+		case <-timer.C:
+			for pid, cmd := range active {
+				_ = cmd.Process.Kill()
+				delete(active, pid)
+			}
+			return
+		}
+	}
 }
