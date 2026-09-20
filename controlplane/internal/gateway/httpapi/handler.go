@@ -45,6 +45,12 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 		respondDownstream(w, payload)
 	}
 
+	const maxPromptLen = 1536
+	if len(promptStr) > maxPromptLen {
+		upstreamFallback()
+		return
+	}
+
 	resp, err := gw.stub.CheckCache(ctx, &pb.CheckCacheRequest{Prompt: promptStr})
 	if err != nil {
 		upstreamFallback()
