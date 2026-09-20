@@ -13,3 +13,7 @@ func Execute() error {
 	}
 	return nil
 }
+
+func init() {
+	rootCmd.AddCommand(serveCmd)
+}
