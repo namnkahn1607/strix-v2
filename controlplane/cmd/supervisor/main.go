@@ -8,7 +8,7 @@ import (
 
 func main() {
 	if err := cli.Execute(); err != nil {
-		fmt.Fprint(os.Stderr, "Error executing root command: %w\n", err)
+		fmt.Fprintf(os.Stderr, "root command: %v\n", err)
 		os.Exit(1)
 	}
 }

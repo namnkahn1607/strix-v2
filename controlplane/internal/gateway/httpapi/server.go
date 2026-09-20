@@ -26,12 +26,12 @@ func NewGateway() (*Gateway, func() error, error) {
 	conn, err := grpc.NewClient(socketAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, nil, fmt.Errorf("gRPC connection error: %w", err)
+		return nil, nil, fmt.Errorf("gRPC connection: %w", err)
 	}
 
 	if err := pollEngineReady(conn); err != nil {
 		conn.Close()
-		return nil, nil, fmt.Errorf("engine readiness check failed: %w", err)
+		return nil, nil, fmt.Errorf("engine readiness check: %w", err)
 	}
 
 	const (
@@ -84,7 +84,7 @@ func pollEngineReady(conn *grpc.ClientConn) error {
 		Service: serviceName,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to start health watch: %w", err)
+		return fmt.Errorf("start health watch: %w", err)
 	}
 
 	for {
@@ -93,7 +93,7 @@ func pollEngineReady(conn *grpc.ClientConn) error {
 			return fmt.Errorf("health watch stream closed unexpectedly")
 		}
 		if err != nil {
-			return fmt.Errorf("health watch error: %w", err)
+			return fmt.Errorf("health watch: %w", err)
 		}
 
 		if resp.Status == grpc_health_v1.HealthCheckResponse_SERVING {
