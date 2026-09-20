@@ -6,5 +6,5 @@ import (
 )
 
 type Upstream interface {
-	Forward(ctx context.Context, body []byte, header http.Header) (respBody []byte, respHeader http.Header, err error)
+	Forward(ctx context.Context, body []byte, header http.Header) (respBody []byte, err error)
 }
