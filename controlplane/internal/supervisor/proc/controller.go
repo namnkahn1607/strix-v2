@@ -31,7 +31,7 @@ func (c *Controller) Run() error {
 
 	paths, err := loadPath()
 	if err != nil {
-
+		return err
 	}
 
 	deathChan := make(chan *exec.Cmd, 2)
