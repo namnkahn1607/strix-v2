@@ -35,9 +35,19 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), engineTimeout)
 	defer cancel()
 
+	upstreamFallback := func() {
+		payload, err := gw.client.Forward(r.Context(), reqBody, r.Header)
+		if err != nil {
+			http.Error(w, "Bad Gateway", http.StatusBadGateway)
+			return
+		}
+
+		respondDownstream(w, payload)
+	}
+
 	resp, err := gw.stub.CheckCache(ctx, &pb.CheckCacheRequest{Prompt: promptStr})
 	if err != nil {
-		// Upstream fallback
+		upstreamFallback()
 		return
 	}
 
@@ -48,7 +58,8 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 	case pb.CacheState_PENDING: // Herd control
 	case pb.CacheState_MISS: // Herd control
 
-	default: // Upstream fallback
+	default:
+		upstreamFallback()
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strix/internal/gateway/pb"
+	"strix/internal/gateway/upstream"
 	"time"
 
 	"google.golang.org/grpc"
@@ -16,6 +17,7 @@ import (
 
 type Gateway struct {
 	stub   pb.CacheServiceClient
+	client upstream.Upstream
 	server *http.Server
 }
 
