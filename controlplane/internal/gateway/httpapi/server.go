@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strix/internal/gateway/pb"
 	"strix/internal/gateway/upstream"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -19,27 +21,42 @@ type Gateway struct {
 	stub   pb.CacheServiceClient
 	client upstream.Upstream
 	server *http.Server
+
+	closers  []io.Closer
+	stopOnce sync.Once
+	stopErr  error
 }
 
-func NewGateway() (*Gateway, func() error, error) {
-	const socketAddr = "unix:///tmp/strix.sock"
-	conn, err := grpc.NewClient(socketAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, nil, fmt.Errorf("gRPC connection: %w", err)
-	}
-
-	if err := pollEngineReady(conn); err != nil {
-		conn.Close()
-		return nil, nil, fmt.Errorf("engine readiness check: %w", err)
-	}
-
+func NewGateway() (*Gateway, error) {
 	const (
-		endpoint = "/v1/cache/strix"
-		port     = ":8080"
+		socketAddr = "unix:///tmp/strix.sock"
+		endpoint   = "/v1/cache/strix"
+		port       = ":8080"
 	)
 
 	gw := &Gateway{}
+
+	var success bool
+	defer func() {
+		// Guard: rollback to resource cleanup once init fails.
+		if !success {
+			_ = gw.closeResources()
+		}
+	}()
+
+	conn, err := grpc.NewClient(socketAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("gRPC connection: %w", err)
+	}
+	gw.addCloser(conn)
+
+	if err := pollEngineReady(conn); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("engine readiness check: %w", err)
+	}
+	gw.stub = pb.NewCacheServiceClient(conn)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc(endpoint, gw.Handle)
 	gw.server = &http.Server{
@@ -51,25 +68,54 @@ func NewGateway() (*Gateway, func() error, error) {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	return gw, conn.Close, nil
+	success = true
+	return gw, nil
 }
 
-func (gw *Gateway) Run() error {
-	var runErr error
-	runErr = gw.server.ListenAndServe()
-
-	const shutdownTimeout = 3 * time.Second
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer shutdownCancel()
-
-	if err := gw.server.Shutdown(shutdownCtx); err != nil {
-		return errors.Join(runErr, err)
+func (gw *Gateway) Start() error {
+	err := gw.server.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
 	}
-
-	return runErr
+	return err
 }
 
-// Wait for Engine to be ready using health check Watch RPC.
+func (gw *Gateway) Terminate(ctx context.Context) error {
+	gw.stopOnce.Do(func() {
+		var errs []error
+
+		// 1. Stop receiving new requests and drain in-flight ones.
+		if gw.server != nil {
+			if err := gw.server.Shutdown(ctx); err != nil {
+				errs = append(errs, fmt.Errorf("http server shutdown: %w", err))
+			}
+		}
+
+		// 2. Clean all Egress resources after Ingress is safe.
+		if err := gw.closeResources(); err != nil {
+			errs = append(errs, err)
+		}
+
+		gw.stopErr = errors.Join(errs...)
+	})
+
+	return gw.stopErr
+}
+
+func (gw *Gateway) addCloser(c io.Closer) {
+	gw.closers = append(gw.closers, c)
+}
+
+func (gw *Gateway) closeResources() error {
+	var errs []error
+	for _, closer := range slices.Backward(gw.closers) { // LIFO order
+		if err := closer.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
 func pollEngineReady(conn *grpc.ClientConn) error {
 	const (
 		serviceName  = "strix.v1.CacheService"
