@@ -8,4 +8,4 @@ set_target_properties(ONNXRuntime PROPERTIES
 add_module(inference
     SOURCES encoder.cc
     DEPS_PUBLIC  ONNXRuntime
-    DEPS_PRIVATE absl::log engine_options)
+    DEPS_PRIVATE engine_options)
