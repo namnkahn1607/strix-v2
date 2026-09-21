@@ -1,0 +1,31 @@
+supervisor:
+  process:
+    drain_timeout: 6s
+    gateway_timeout: 5s
+    engine_timeout: 3s
+
+ipc:
+  socket_address: "unix:///tmp/strix.sock"
+
+gateway:
+  network:
+    port: 8080
+    proxy_endpoint: "/v1/cache/strix"
+    max_reader_size: 1048576    # REQUIRED
+  rpc_client:
+    check_cache_timeout: 50ms
+    set_cache_timeout: 50ms
+  writeback:
+    pool_size: 8                # REQUIRED
+  cache_policy:
+    max_prompt_len: 1536        # REQUIRED
+
+upstreams:
+  - name: primary
+    type: anthropic
+    endpoint: "https://api.anthropic.com/v1/messages"
+    auth_kind: api_key
+    auth_key_env_var: STRIX_ANTHROPIC_API_KEY
+    max_idle_conns_per_host: 8
+    idle_conn_timeout: 60s
+    response_header_timeout: 15s
