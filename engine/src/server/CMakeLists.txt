@@ -23,7 +23,7 @@ add_library(engine_contract STATIC
 target_link_libraries(engine_contract PUBLIC gRPC::grpc++ protobuf::libprotobuf)
 target_include_directories(engine_contract PUBLIC "${PROTO_GEN_DIR}")
 
-add_module(service
+add_module(server
     SOURCES service_impl.cc
     DEPS_PRIVATE engine_options engine_inference
     DEPS_PUBLIC  engine_contract)
