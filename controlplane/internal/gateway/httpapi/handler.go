@@ -11,12 +11,17 @@ import (
 )
 
 func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
+	const (
+		maxReaderSize = 1024 * 1024 // 1 MiB
+		maxPromptLen  = 1536
+		stubTimeout   = 50 * time.Millisecond
+	)
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	const maxReaderSize = 1024 * 1024 // 1 MiB
 	r.Body = http.MaxBytesReader(w, r.Body, maxReaderSize)
 	reqBody, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -31,10 +36,6 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	const engineTimeout = 50 * time.Millisecond
-	ctx, cancel := context.WithTimeout(r.Context(), engineTimeout)
-	defer cancel()
-
 	upstreamFallback := func() {
 		payload, err := gw.client.Forward(r.Context(), reqBody, r.Header)
 		if err != nil {
@@ -45,12 +46,13 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 		respondDownstream(w, payload)
 	}
 
-	const maxPromptLen = 1536
 	if len(promptStr) > maxPromptLen {
 		upstreamFallback()
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(r.Context(), stubTimeout)
+	defer cancel()
 	resp, err := gw.stub.CheckCache(ctx, &pb.CheckCacheRequest{Prompt: promptStr})
 	if err != nil {
 		upstreamFallback()
