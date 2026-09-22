@@ -1,8 +1,11 @@
 #pragma once
 
+#include <absl/strings/cord.h>
+
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 #include "meta_node.h"
 
@@ -20,10 +23,23 @@ public:
     Arena(Arena&&)                = delete;
     Arena operator=(Arena&&)      = delete;
 
+    bool WritePayload(
+        std::uint32_t node_id, const std::uint8_t* in, std::uint32_t length
+    ) noexcept;
+
     const std::uint32_t num_slots;
     const std::size_t   payload_buf_size;
 
 private:
+    std::size_t ActualIndex(std::uint64_t offset) const noexcept {
+        return offset & (payload_buf_size - 1);
+    }
+
+    // Returns the virtual offset at which caller can begin writing to.
+    std::optional<std::uint64_t> TryAllocateSpace(
+        std::uint32_t length
+    ) noexcept;
+
     Node*         nodes_;    // Node slot array
     float*        vectors_;  // Vector array
     std::uint8_t* payload_buf_;
