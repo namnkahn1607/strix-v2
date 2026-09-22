@@ -1,5 +1,7 @@
 #include "server/service_impl.h"
 
+#include "cache.pb.h"
+#include "inference/encoder.h"
 #include "inference/vector.h"
 
 namespace strix::service {
@@ -19,8 +21,15 @@ grpc::Status CacheServiceImpl::CheckCache(
     inference::Vector query_vec;
     auto encode_err = encoder_.Encode(request->prompt().c_str(), query_vec);
     if (encode_err.has_value()) {
-        response->set_check_state(strix::v1::REJECTED);
-        return grpc::Status::OK;
+        switch (encode_err.value()) {
+            case inference::EncodeErr::kTokenLimitExceeded:
+                response->set_check_state(strix::v1::OVERFLOWN);
+                return grpc::Status::OK;
+
+            case inference::EncodeErr::kDegeneratedVector:
+                response->set_check_state(strix::v1::DEGENERATED);
+                return grpc::Status::OK;
+        }
     }
 
     return grpc::Status::OK;
