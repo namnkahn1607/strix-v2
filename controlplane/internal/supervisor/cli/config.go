@@ -79,10 +79,11 @@ func runConfigGet(_ *cobra.Command, _ []string) error {
 	fmt.Println()
 
 	fmt.Println("=== Gateway ===")
-	fmt.Printf("  Port:            %d\n", opts.Gateway.Network.Port)
-	fmt.Printf("  Proxy endpoint:  %s\n", opts.Gateway.Network.ProxyEndpoint)
-	fmt.Printf("  Max reader size: %d bytes\n", opts.Gateway.Network.MaxReaderSize)
-	fmt.Printf("  Writeback pool:  %d workers\n", opts.Gateway.Writeback.PoolSize)
+	fmt.Printf("  Port:                     %d\n", opts.Gateway.Http.Port)
+	fmt.Printf("  Proxy endpoint:           %s\n", opts.Gateway.Http.ProxyEndpoint)
+	fmt.Printf("  Max reader size:          %d bytes\n", opts.Gateway.Http.MaxReaderSize)
+	fmt.Printf("  Writeback pool:           %d workers\n", opts.Gateway.Writeback.PoolSize)
+	fmt.Printf("  Writeback queue capacity: %d jobs\n", opts.Gateway.Writeback.JobQueueCap)
 	fmt.Println()
 
 	fmt.Println("=== RPC Client ===")

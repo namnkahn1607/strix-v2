@@ -44,11 +44,11 @@ func (o *Options) applyDefaults() {
 	if o.Gateway.RpcClient.SetCacheTimeout == 0 {
 		o.Gateway.RpcClient.SetCacheTimeout = 50 * time.Millisecond
 	}
-	if o.Gateway.Network.ProxyEndpoint == "" {
-		o.Gateway.Network.ProxyEndpoint = "/v1/cache/strix"
+	if o.Gateway.Http.ProxyEndpoint == "" {
+		o.Gateway.Http.ProxyEndpoint = "/v1/cache/strix"
 	}
-	if o.Gateway.Network.Port == 0 {
-		o.Gateway.Network.Port = 8080
+	if o.Gateway.Http.Port == 0 {
+		o.Gateway.Http.Port = 8080
 	}
 }
 
@@ -67,10 +67,13 @@ func (o *Options) validate() error {
 	}
 
 	if o.Gateway.Writeback.PoolSize <= 0 {
-		return errors.New("invalid config: gateway.writeback.pool_size not found")
+		return errors.New("invalid config: gateway.writeback.pool_size is not set")
 	}
-	if o.Gateway.Network.MaxReaderSize <= 0 {
-		return errors.New("invalid config: gateway.network.max_reader_size not found")
+	if o.Gateway.Writeback.JobQueueCap <= 0 {
+		return errors.New("invalid config: gateway.writeback.job_queue_cap is not set")
+	}
+	if o.Gateway.Http.MaxReaderSize <= 0 {
+		return errors.New("invalid config: gateway.network.max_reader_size is not set")
 	}
 
 	return nil

@@ -24,12 +24,12 @@ type IpcOptions struct {
 }
 
 type GatewayOptions struct {
-	Network   NetworkOptions   `yaml:"network"`
+	Http      HttpOptions      `yaml:"http"`
 	RpcClient RpcClientOptions `yaml:"rpc_client"`
 	Writeback WritebackOptions `yaml:"writeback"`
 }
 
-type NetworkOptions struct {
+type HttpOptions struct {
 	Port          int    `yaml:"port"`
 	ProxyEndpoint string `yaml:"proxy_endpoint"`
 	MaxReaderSize int    `yaml:"max_reader_size"`
@@ -41,7 +41,8 @@ type RpcClientOptions struct {
 }
 
 type WritebackOptions struct {
-	PoolSize int `yaml:"pool_size"`
+	PoolSize    int `yaml:"pool_size"`
+	JobQueueCap int `yaml:"job_queue_capacity"`
 }
 
 type CachePolicyOptions struct {
@@ -54,7 +55,7 @@ type UpstreamOptions struct {
 	Endpoint              string        `yaml:"endpoint"`
 	AuthKind              string        `yaml:"auth_kind"`
 	AuthKeyEnvVar         string        `yaml:"auth_key_env_var"`
-	MaxIdleConnsPerHost   int           `yaml:"max_idle_conns_per_host"`
-	IdleConnTimeout       time.Duration `yaml:"idle_conn_timeout"`
+	MaxIdleConnsPerHost   int           `yaml:"max_idle_connections_per_host"`
+	IdleConnTimeout       time.Duration `yaml:"idle_connection_timeout"`
 	ResponseHeaderTimeout time.Duration `yaml:"response_header_timeout"`
 }
