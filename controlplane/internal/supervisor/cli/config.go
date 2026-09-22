@@ -91,14 +91,16 @@ func runConfigGet(_ *cobra.Command, _ []string) error {
 	fmt.Println()
 
 	fmt.Println("=== Upstreams ===")
-	fmt.Printf("  Name:                     %s\n", opts.Upstreams.Name)
-	fmt.Printf("  Type:                     %s\n", opts.Upstreams.Type)
-	fmt.Printf("  Endpoint:                 %s\n", opts.Upstreams.Endpoint)
-	fmt.Printf("  Auth kind:                %s\n", opts.Upstreams.AuthKind)
-	fmt.Printf("  Auth key env var:         %s\n", opts.Upstreams.AuthKeyEnvVar)
-	fmt.Printf("  Max idle conns per host:  %d\n", opts.Upstreams.MaxIdleConnsPerHost)
-	fmt.Printf("  Idle conn timeout:        %s\n", opts.Upstreams.IdleConnTimeout)
-	fmt.Printf("  Response header timeout:  %s\n", opts.Upstreams.ResponseHeaderTimeout)
+	for _, upstr := range opts.Upstreams {
+		fmt.Printf("  Name:                     %s\n", upstr.Name)
+		fmt.Printf("  Type:                     %s\n", upstr.Type)
+		fmt.Printf("  Endpoint:                 %s\n", upstr.Endpoint)
+		fmt.Printf("  Auth kind:                %s\n", upstr.AuthKind)
+		fmt.Printf("  Auth key env var:         %s\n", upstr.AuthKeyEnvVar)
+		fmt.Printf("  Max idle conns per host:  %d\n", upstr.MaxIdleConnsPerHost)
+		fmt.Printf("  Idle conn timeout:        %s\n", upstr.IdleConnTimeout)
+		fmt.Printf("  Response header timeout:  %s\n", upstr.ResponseHeaderTimeout)
+	}
 
 	return nil
 }

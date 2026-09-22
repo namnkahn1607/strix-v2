@@ -6,7 +6,7 @@ type Options struct {
 	Supervisor SupervisorOptions `yaml:"supervisor"`
 	Ipc        IpcOptions        `yaml:"ipc"`
 	Gateway    GatewayOptions    `yaml:"gateway"`
-	Upstreams  UpstreamOptions   `yaml:"upstreams"`
+	Upstreams  []UpstreamOptions `yaml:"upstreams"`
 }
 
 type SupervisorOptions struct {
