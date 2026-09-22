@@ -16,4 +16,5 @@ func Execute() error {
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
+	rootCmd.AddCommand(configCmd)
 }
