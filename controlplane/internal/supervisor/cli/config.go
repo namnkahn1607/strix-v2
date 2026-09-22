@@ -100,6 +100,7 @@ func runConfigGet(_ *cobra.Command, _ []string) error {
 		fmt.Printf("  Max idle conns per host:  %d\n", upstr.MaxIdleConnsPerHost)
 		fmt.Printf("  Idle conn timeout:        %s\n", upstr.IdleConnTimeout)
 		fmt.Printf("  Response header timeout:  %s\n", upstr.ResponseHeaderTimeout)
+		fmt.Println()
 	}
 
 	return nil
