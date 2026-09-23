@@ -10,6 +10,7 @@
 #include "inference/vector.h"
 #include "memory/control_block.h"
 #include "memory/state.h"
+#include "payload_header.h"
 
 namespace strix::memory {
 
@@ -96,8 +97,15 @@ bool Arena::WritePayload(
         return false;
     }
 
-    const auto text_offset = opt_offset.value();
-    const auto text_index  = ActualIndex(text_offset);
+    const auto header_offset = opt_offset.value();
+    const auto header_index  = ActualIndex(header_offset);
+
+    const PayloadHeader header{
+        PayloadHeader::kValidIdentifier, node_id, length
+    };
+    std::memcpy(payload_buf_ + header_index, &header, sizeof(PayloadHeader));
+
+    const auto text_index = header_index + sizeof(PayloadHeader);
     if (payload_buf_size - text_index >= length) {
         std::memcpy(payload_buf_ + text_index, in, length);
     } else {
@@ -112,19 +120,26 @@ bool Arena::WritePayload(
 std::optional<std::uint64_t> Arena::TryAllocateSpace(
     std::uint32_t length
 ) noexcept {
-    std::uint64_t curr_write = write_head.load(std::memory_order_relaxed);
-    std::uint64_t next_write = curr_write + length;
+    const std::size_t total_size = sizeof(PayloadHeader) + length;
+    std::uint64_t     curr_write = write_head.load(std::memory_order_relaxed);
 
     while (true) {
         std::uint64_t curr_read = read_tail.load(std::memory_order_relaxed);
-        if (curr_write + length - curr_read >= payload_buf_size) {
+        if (curr_write + total_size - curr_read >= payload_buf_size) {
             return std::nullopt;  // Exhausted payload buffer
         }
 
+        const auto header_index = ActualIndex(curr_write);
+        const auto space_left   = payload_buf_size - header_index;
+
+        auto padding = (space_left < sizeof(PayloadHeader)) ? space_left : 0;
+        const std::uint64_t alloc_offset = curr_write + padding;
+
+        const std::uint64_t next_write = alloc_offset + total_size;
         if (write_head.compare_exchange_weak(
                 curr_write, next_write, std::memory_order_relaxed
             )) {
-            return curr_write;
+            return alloc_offset;
         }
     }
 }
