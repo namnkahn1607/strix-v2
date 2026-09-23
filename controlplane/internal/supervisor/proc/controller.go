@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strix/internal/wire/config"
 	"syscall"
 	"time"
 )
@@ -25,9 +26,25 @@ func Execute() error {
 		return err
 	}
 
+	configPath, err := config.LoadConfigPath()
+	if err != nil {
+		return fmt.Errorf("load config path: %w", err)
+	}
+	opts, err := config.Parse(configPath)
+	if err != nil {
+		return fmt.Errorf("parse config: %w", err)
+	}
+
 	const numChildProcs = 2
 	active := make(map[int]*exec.Cmd, numChildProcs)
 	deathChan := make(chan int, numChildProcs)
+
+	var encodeErr error
+	encode := func(enc *json.Encoder, v any) {
+		if encodeErr == nil {
+			encodeErr = enc.Encode(v)
+		}
+	}
 
 	// Fork Engine process.
 	readC, writeC, err := os.Pipe()
@@ -60,7 +77,16 @@ func Execute() error {
 	}
 	defer writeB.Close()
 
-	gatewayCmd, err := fork(paths.gateway, readB, nil)
+	gatewayEnc := json.NewEncoder(writeB)
+	encode(gatewayEnc, opts.Ipc)
+	encode(gatewayEnc, opts.Gateway)
+	encode(gatewayEnc, opts.Upstreams)
+	if encodeErr != nil {
+		return fmt.Errorf("encode gateway config: %w", encodeErr)
+	}
+
+	gatewayEnv := append(os.Environ(), "PARENT_PIPE_FD=3")
+	gatewayCmd, err := fork(gatewayBin, readB, gatewayEnv)
 	_ = readB.Close()
 	if err != nil {
 		return err
@@ -80,7 +106,7 @@ func Execute() error {
 	_ = writeC.Close()
 	_ = writeB.Close()
 
-	drain(active, deathChan)
+	drain(opts.Supervisor.DrainTimeout, active, deathChan)
 	return nil
 }
 
@@ -104,13 +130,12 @@ func supervise(cmd *exec.Cmd, deathChan chan<- int) {
 	}()
 }
 
-func drain(active map[int]*exec.Cmd, deathChan <-chan int) {
+func drain(timeout time.Duration, active map[int]*exec.Cmd, deathChan <-chan int) {
 	if len(active) == 0 {
 		return
 	}
 
-	const drainTimeout = 6 * time.Second
-	timer := time.NewTimer(drainTimeout)
+	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 
 	for len(active) > 0 {
