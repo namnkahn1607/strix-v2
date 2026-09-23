@@ -39,13 +39,6 @@ func Execute() error {
 	active := make(map[int]*exec.Cmd, numChildProcs)
 	deathChan := make(chan int, numChildProcs)
 
-	var encodeErr error
-	encode := func(enc *json.Encoder, v any) {
-		if encodeErr == nil {
-			encodeErr = enc.Encode(v)
-		}
-	}
-
 	// Fork Engine process.
 	readC, writeC, err := os.Pipe()
 	if err != nil {
@@ -54,10 +47,11 @@ func Execute() error {
 	defer writeC.Close()
 
 	engineEnc := json.NewEncoder(writeC)
-	encode(engineEnc, opts.Ipc)
-	encode(engineEnc, opts.Engine)
-	if encodeErr != nil {
-		return fmt.Errorf("encode engine config: %w", encodeErr)
+	if err := engineEnc.Encode(config.EngineEnvelop{
+		Ipc:    opts.Ipc,
+		Engine: opts.Engine,
+	}); err != nil {
+		return fmt.Errorf("encode engine config: %w", err)
 	}
 
 	engineEnv := append(os.Environ(),
@@ -78,11 +72,12 @@ func Execute() error {
 	defer writeB.Close()
 
 	gatewayEnc := json.NewEncoder(writeB)
-	encode(gatewayEnc, opts.Ipc)
-	encode(gatewayEnc, opts.Gateway)
-	encode(gatewayEnc, opts.Upstreams)
-	if encodeErr != nil {
-		return fmt.Errorf("encode gateway config: %w", encodeErr)
+	if err := gatewayEnc.Encode(config.GatewayEnvelop{
+		Ipc:       opts.Ipc,
+		Gateway:   opts.Gateway,
+		Upstreams: opts.Upstreams,
+	}); err != nil {
+		return fmt.Errorf("encode gateway config: %w", err)
 	}
 
 	gatewayEnv := append(os.Environ(), "PARENT_PIPE_FD=3")
