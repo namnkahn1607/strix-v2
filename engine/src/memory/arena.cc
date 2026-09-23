@@ -6,7 +6,10 @@
 #include <stdexcept>
 
 #include "allocator.h"
+#include "buffer_pool.h"
 #include "inference/vector.h"
+#include "memory/control_block.h"
+#include "memory/state.h"
 
 namespace strix::memory {
 
@@ -34,6 +37,47 @@ Arena::~Arena() {
     Dealloc<std::uint8_t>(payload_buf_, payload_buf_size);
 }
 
+std::optional<absl::Cord> Arena::ReadPayload(
+    std::uint32_t node_id
+) const noexcept {
+    auto& node = nodes_[node_id];
+    auto  ctrl = node.control_block.load(std::memory_order_acquire);
+
+    auto [state, ref, ver, length, offset] = ControlBlock::Unpack(ctrl);
+    if (state != NodeState::kReady) {
+        return std::nullopt;
+    }
+
+    std::uint32_t pool_id;
+    std::uint8_t* dst = buf_pool_->Acquire(&pool_id);
+    if (dst == nullptr) {
+        return std::nullopt;
+    }
+
+    const auto text_index = ActualIndex(offset);
+    if (payload_buf_size - text_index >= length) {
+        std::memcpy(dst, payload_buf_ + text_index, length);
+    } else {
+        const auto chunk1 = payload_buf_size - text_index;
+        const auto chunk2 = length - chunk1;
+        std::memcpy(dst, payload_buf_ + text_index, chunk1);
+        std::memcpy(dst + chunk1, payload_buf_, chunk2);
+    }
+
+    // What if node being evicted mid-read?
+    auto res = buf_pool_->Wrap(dst, pool_id, length);
+
+    auto       expected = ctrl;
+    const auto desired  = ControlBlock::Pack(
+        NodeState::kReady, RefBit::kHot, ver, length, offset
+    );
+    node.control_block.compare_exchange_strong(
+        expected, desired, std::memory_order_release, std::memory_order_relaxed
+    );
+
+    return res;
+}
+
 bool Arena::WritePayload(
     std::uint32_t node_id, const std::uint8_t* in, std::uint32_t length
 ) noexcept {
@@ -52,14 +96,14 @@ bool Arena::WritePayload(
         return false;
     }
 
-    const auto text_offset  = opt_offset.value();
-    const auto actual_index = ActualIndex(text_offset);
-    if (payload_buf_size - actual_index >= length) {
-        std::memcpy(payload_buf_ + actual_index, in, length);
+    const auto text_offset = opt_offset.value();
+    const auto text_index  = ActualIndex(text_offset);
+    if (payload_buf_size - text_index >= length) {
+        std::memcpy(payload_buf_ + text_index, in, length);
     } else {
-        const auto chunk1 = payload_buf_size - actual_index;
+        const auto chunk1 = payload_buf_size - text_index;
         const auto chunk2 = length - chunk1;
-        std::memcpy(payload_buf_ + actual_index, in, chunk1);
+        std::memcpy(payload_buf_ + text_index, in, chunk1);
         std::memcpy(payload_buf_, in + chunk1, chunk2);
     }
     return true;

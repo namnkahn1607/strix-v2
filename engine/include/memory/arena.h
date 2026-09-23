@@ -5,11 +5,14 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
 
 #include "meta_node.h"
 
 namespace strix::memory {
+
+class BufPool;
 
 // Primary memory region.
 // Thread-safe as each API has its own synchronization guarantees.
@@ -22,6 +25,8 @@ public:
     Arena operator=(const Arena&) = delete;
     Arena(Arena&&)                = delete;
     Arena operator=(Arena&&)      = delete;
+
+    std::optional<absl::Cord> ReadPayload(std::uint32_t node_id) const noexcept;
 
     bool WritePayload(
         std::uint32_t node_id, const std::uint8_t* in, std::uint32_t length
@@ -46,6 +51,8 @@ private:
 
     std::atomic<std::uint64_t> write_head;
     std::atomic<std::uint64_t> read_tail;
+
+    std::unique_ptr<BufPool> buf_pool_;
 };
 
 }  // namespace strix::memory
