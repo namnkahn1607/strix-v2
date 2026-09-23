@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strix/internal/gateway/pb"
 	"strix/internal/gateway/upstream"
+	"strix/internal/wire/config"
 	"sync"
 	"time"
 
@@ -27,13 +28,7 @@ type Gateway struct {
 	stopErr  error
 }
 
-func NewGateway() (*Gateway, error) {
-	const (
-		socketAddr = "unix:///tmp/strix.sock"
-		endpoint   = "/v1/cache/strix"
-		port       = ":8080"
-	)
-
+func NewGateway(cfg *config.GatewayEnvelop) (*Gateway, error) {
 	gw := &Gateway{}
 
 	var success bool
@@ -44,7 +39,7 @@ func NewGateway() (*Gateway, error) {
 		}
 	}()
 
-	conn, err := grpc.NewClient(socketAddr,
+	conn, err := grpc.NewClient(cfg.Ipc.SocketAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("gRPC connection: %w", err)
@@ -58,9 +53,9 @@ func NewGateway() (*Gateway, error) {
 	gw.stub = pb.NewCacheServiceClient(conn)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc(endpoint, gw.Handle)
+	mux.HandleFunc(cfg.Gateway.Http.ProxyEndpoint, gw.Handle)
 	gw.server = &http.Server{
-		Addr:              port,
+		Addr:              fmt.Sprintf(":%d", cfg.Gateway.Http.Port),
 		Handler:           mux,
 		ReadHeaderTimeout: 3 * time.Second,
 		ReadTimeout:       5 * time.Second,
