@@ -28,14 +28,14 @@ func Parse(path string) (*Options, error) {
 }
 
 func (o *Options) applyDefaults() {
-	if o.Supervisor.Process.DrainTimeout == 0 {
-		o.Supervisor.Process.DrainTimeout = 6 * time.Second
+	if o.Supervisor.DrainTimeout == 0 {
+		o.Supervisor.DrainTimeout = 6 * time.Second
 	}
-	if o.Supervisor.Process.GatewayTimeout == 0 {
-		o.Supervisor.Process.GatewayTimeout = 5 * time.Second
+	if o.Gateway.ShutdownTimeout == 0 {
+		o.Gateway.ShutdownTimeout = 5 * time.Second
 	}
-	if o.Supervisor.Process.EngineTimeout == 0 {
-		o.Supervisor.Process.EngineTimeout = 3 * time.Second
+	if o.Engine.ShutdownTimeout == 0 {
+		o.Engine.ShutdownTimeout = 3 * time.Second
 	}
 
 	if o.Gateway.RpcClient.CheckCacheTimeout == 0 {
@@ -53,16 +53,16 @@ func (o *Options) applyDefaults() {
 }
 
 func (o *Options) validate() error {
-	if o.Supervisor.Process.EngineTimeout >= o.Supervisor.Process.GatewayTimeout {
+	if o.Engine.ShutdownTimeout >= o.Gateway.ShutdownTimeout {
 		return fmt.Errorf(
 			"invalid config: engine_timeout (%s) must be smaller than gateway_timeout (%s)",
-			o.Supervisor.Process.EngineTimeout, o.Supervisor.Process.GatewayTimeout,
+			o.Engine.ShutdownTimeout, o.Gateway.ShutdownTimeout,
 		)
 	}
-	if o.Supervisor.Process.GatewayTimeout > o.Supervisor.Process.DrainTimeout {
+	if o.Gateway.ShutdownTimeout > o.Supervisor.DrainTimeout {
 		return fmt.Errorf(
 			"invalid config: gateway timeout (%s) cannot be greater than drain_timeout (%s)",
-			o.Supervisor.Process.GatewayTimeout, o.Supervisor.Process.GatewayTimeout,
+			o.Gateway.ShutdownTimeout, o.Supervisor.DrainTimeout,
 		)
 	}
 
