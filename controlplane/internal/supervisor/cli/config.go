@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strix/internal/supervisor/config"
+	"strix/internal/wire/config"
 
 	"github.com/spf13/cobra"
 )
@@ -48,7 +48,7 @@ func runConfigSet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := saveConfigPath(absPath); err != nil {
+	if err := config.SaveConfigPath(absPath); err != nil {
 		return fmt.Errorf("save config path: %w", err)
 	}
 
@@ -57,7 +57,7 @@ func runConfigSet(_ *cobra.Command, args []string) error {
 }
 
 func runConfigGet(_ *cobra.Command, _ []string) error {
-	configPath, err := loadConfigPath()
+	configPath, err := config.LoadConfigPath()
 	if err != nil {
 		return fmt.Errorf("load config path: %w", err)
 	}
@@ -69,9 +69,7 @@ func runConfigGet(_ *cobra.Command, _ []string) error {
 
 	fmt.Printf("Configuration file: %s\n\n", configPath)
 	fmt.Println("=== Supervisor ===")
-	fmt.Printf("  Drain timeout:   %s\n", opts.Supervisor.Process.DrainTimeout)
-	fmt.Printf("  Gateway timeout: %s\n", opts.Supervisor.Process.GatewayTimeout)
-	fmt.Printf("  Engine timeout:  %s\n", opts.Supervisor.Process.EngineTimeout)
+	fmt.Printf("  Drain timeout:   %s\n", opts.Supervisor.DrainTimeout)
 	fmt.Println()
 
 	fmt.Println("=== IPC ===")
@@ -84,6 +82,7 @@ func runConfigGet(_ *cobra.Command, _ []string) error {
 	fmt.Printf("  Max reader size:          %d bytes\n", opts.Gateway.Http.MaxReaderSize)
 	fmt.Printf("  Writeback pool:           %d workers\n", opts.Gateway.Writeback.PoolSize)
 	fmt.Printf("  Writeback queue capacity: %d jobs\n", opts.Gateway.Writeback.JobQueueCap)
+	fmt.Printf("  Shutdown timeout:         %s\n", opts.Gateway.ShutdownTimeout)
 	fmt.Println()
 
 	fmt.Println("=== RPC Client ===")
@@ -104,59 +103,9 @@ func runConfigGet(_ *cobra.Command, _ []string) error {
 		fmt.Println()
 	}
 
-	return nil
-}
-
-// Returns the directory storing Strix configuration.
-// Follows XDG Base Directory specification.
-func getConfigDir() (string, error) {
-	configHome := os.Getenv("XDG_CONFIG_HOME")
-	if configHome == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("get home directory: %w", err)
-		}
-		configHome = filepath.Join(homeDir, ".config")
-	}
-
-	return filepath.Join(configHome, "strix"), nil
-}
-
-// Persists the configuration file path to disk.
-func saveConfigPath(path string) error {
-	configDir, err := getConfigDir()
-	if err != nil {
-		return err
-	}
-
-	// Full permissions (rwx) to the owner, but not others.
-	if err := os.MkdirAll(configDir, 0700); err != nil {
-		return fmt.Errorf("create config directory: %w", err)
-	}
-
-	configPathFile := filepath.Join(configDir, "config_path")
-	if err := os.WriteFile(configPathFile, []byte(path), 0600); err != nil {
-		return fmt.Errorf("write config path file: %w", err)
-	}
+	fmt.Println("=== Engine ===")
+	fmt.Printf("  Shutdown timeout:  %s\n", opts.Engine.ShutdownTimeout)
+	fmt.Println()
 
 	return nil
-}
-
-// Retrieves the persisted configuration file path.
-func loadConfigPath() (string, error) {
-	configDir, err := getConfigDir()
-	if err != nil {
-		return "", err
-	}
-
-	configPathFile := filepath.Join(configDir, "config_path")
-	data, err := os.ReadFile(configPathFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", fmt.Errorf("no config path set. Use 'strix config set <path>' first")
-		}
-		return "", fmt.Errorf("read config path file: %w", err)
-	}
-
-	return string(data), nil
 }
