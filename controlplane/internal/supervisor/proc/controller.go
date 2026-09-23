@@ -2,25 +2,25 @@ package proc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 )
-
-type Controller struct{}
-
-func NewController() *Controller {
-	return &Controller{}
-}
 
 func Execute() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	paths, err := loadPath()
+	gatewayBin, engineBin, err := loadBinaryPath()
+	if err != nil {
+		return err
+	}
+	tokModel, bertModel, err := loadModelPath()
 	if err != nil {
 		return err
 	}
@@ -36,9 +36,16 @@ func Execute() error {
 	}
 	defer writeC.Close()
 
+	engineEnc := json.NewEncoder(writeC)
+	encode(engineEnc, opts.Ipc)
+	encode(engineEnc, opts.Engine)
+	if encodeErr != nil {
+		return fmt.Errorf("encode engine config: %w", encodeErr)
+	}
+
 	engineEnv := append(os.Environ(),
-		"TOKENIZER_PATH="+paths.tokenizer, "TRANSFORMER_PATH="+paths.transformer)
-	engineCmd, err := fork(paths.engine, readC, engineEnv)
+		"TOKENIZER_PATH="+tokModel, "TRANSFORMER_PATH="+bertModel, "PARENT_PIPE_FD=3")
+	engineCmd, err := fork(engineBin, readC, engineEnv)
 	_ = readC.Close()
 	if err != nil {
 		return err
@@ -119,4 +126,35 @@ func drain(active map[int]*exec.Cmd, deathChan <-chan int) {
 			return
 		}
 	}
+}
+
+func loadBinaryPath() (gateway, engine string, err error) {
+	const (
+		gatewayBin = "strix_gateway"
+		engineBin  = "strix_engine"
+	)
+
+	execPath, err := os.Executable()
+	if err != nil {
+		return "", "", fmt.Errorf("resolve executable path: %w", err)
+	}
+
+	binDir := filepath.Dir(execPath)
+	return filepath.Join(binDir, gatewayBin), filepath.Join(binDir, engineBin), nil
+}
+
+func loadModelPath() (tokenizer, transformer string, err error) {
+	const (
+		tokFile  = "tokenizer.onnx"
+		bertFile = "transformer.onnx"
+	)
+
+	execPath, err := os.Executable()
+	if err != nil {
+		return "", "", fmt.Errorf("resolve executable path: %w", err)
+	}
+
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(execPath), ".."))
+	modelDir := filepath.Join(repoRoot, "model")
+	return filepath.Join(modelDir, tokFile), filepath.Join(modelDir, bertFile), nil
 }
