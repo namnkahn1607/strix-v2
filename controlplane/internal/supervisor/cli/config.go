@@ -64,7 +64,7 @@ func runConfigGet(_ *cobra.Command, _ []string) error {
 
 	opts, err := config.Parse(configPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse config: %w", err)
 	}
 
 	fmt.Printf("Configuration file: %s\n\n", configPath)

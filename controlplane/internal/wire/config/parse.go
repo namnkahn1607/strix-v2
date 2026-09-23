@@ -17,7 +17,7 @@ func Parse(path string) (*Options, error) {
 
 	var opts Options
 	if err := yaml.Unmarshal(buf, &opts); err != nil {
-		return nil, fmt.Errorf("parse config: %w", err)
+		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 	opts.applyDefaults()
 
