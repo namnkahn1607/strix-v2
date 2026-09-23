@@ -73,7 +73,15 @@ func (o *Options) validate() error {
 		return errors.New("invalid config: gateway.writeback.job_queue_cap is not set")
 	}
 	if o.Gateway.Http.MaxReaderSize <= 0 {
-		return errors.New("invalid config: gateway.network.max_reader_size is not set")
+		return errors.New("invalid config: gateway.http.max_reader_size is not set")
+	}
+
+	const maxUpstreams = 8
+	if len(o.Upstreams) == 0 {
+		return errors.New("invalid config: at least 1 upstream are required")
+	}
+	if len(o.Upstreams) > maxUpstreams {
+		return fmt.Errorf("invalid config: at most %d upstreams are supported", maxUpstreams)
 	}
 
 	return nil
