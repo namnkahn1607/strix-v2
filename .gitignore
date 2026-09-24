@@ -1,6 +1,7 @@
 .aider*
 
 .cache/
+.venv/
 .vscode/
 bin/
 build/
