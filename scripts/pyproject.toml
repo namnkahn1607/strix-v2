@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
+    "onnx>=1.23.0",
+    "onnxruntime>=1.30.0",
     "onnxruntime-extensions==0.15.2",
     "transformers==4.57.6",
 ]
