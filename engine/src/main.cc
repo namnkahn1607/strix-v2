@@ -7,7 +7,7 @@
 #include <memory>
 
 #include "inference/encoder.h"
-#include "service/service_impl.h"
+#include "server/service_impl.h"
 
 using namespace strix;
 
