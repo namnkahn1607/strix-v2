@@ -1,6 +1,5 @@
 #include "inference/encoder.h"
 
-#include <absl/log/check.h>
 #include <onnxruntime_cxx_api.h>
 
 #include <array>
