@@ -1,2 +1,1 @@
-add_module(memory
-    SOURCES arena.cc)
+add_module(memory SOURCES arena.cc)
