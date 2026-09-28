@@ -117,14 +117,80 @@ bool Arena::WritePayload(
     return true;
 }
 
+void Arena::GarbageCollection() noexcept {
+    while (true) {
+        const std::uint64_t tail = read_tail_.load(std::memory_order_relaxed);
+
+        const auto tail_index = ActualIndex(tail);
+        if (const auto padding = payload_buf_size - tail_index;
+            padding < sizeof(PayloadHeader)) {
+            read_tail_.fetch_add(padding, std::memory_order_relaxed);
+        }
+
+        const auto* header =
+            reinterpret_cast<const PayloadHeader*>(payload_buf_ + tail_index);
+        if (header->identifier != PayloadHeader::kValidIdentifier) {
+            // Reading an invalid PayloadHeader.
+            // Reluctantly advance by 1 byte and retry.
+            read_tail_.fetch_add(1, std::memory_order_relaxed);
+            continue;
+        }
+
+        const auto text_len  = header->length;
+        const auto total_len = sizeof(PayloadHeader) + text_len;
+
+        auto& node = nodes_[header->node_id];
+
+        const auto [state, ref, ver, length, offset] = node.LoadCtrl();
+        auto expected = ControlBlock::Pack(state, ref, ver, length, offset);
+
+        if (state == NodeState::kDead) {
+            read_tail_.fetch_add(total_len, std::memory_order_relaxed);
+            continue;
+        }
+
+        if (state == NodeState::kPending) {
+            // New payload for this node will be committed at write_head_, not
+            // at this position.
+            read_tail_.fetch_add(total_len, std::memory_order_relaxed);
+            continue;
+        }
+
+        if (ref == RefBit::kCold) {
+            // Cold node: evict immeditately.
+            const auto desired =
+                ControlBlock::Pack(NodeState::kDead, ref, ver, length, offset);
+            if (node.control_block.compare_exchange_strong(
+                    expected, desired, std::memory_order_release,
+                    std::memory_order_relaxed
+                )) {
+                read_tail_.fetch_add(total_len, std::memory_order_relaxed);
+                continue;
+            }
+            // Should this CAS fail?
+        }
+
+        // Hot node: grant Second Chance while cooling its reference bit.
+        const auto desired =
+            ControlBlock::Pack(state, RefBit::kCold, ver, length, offset);
+        if (node.control_block.compare_exchange_strong(
+                expected, desired, std::memory_order_release,
+                std::memory_order_relaxed
+            )) {
+            read_tail_.fetch_add(total_len, std::memory_order_relaxed);
+        }
+        // Should this CAS fail?
+    }
+}
+
 std::optional<std::uint64_t> Arena::TryAllocateSpace(
     std::uint32_t length
 ) noexcept {
     const std::size_t total_size = sizeof(PayloadHeader) + length;
-    std::uint64_t     curr_write = write_head.load(std::memory_order_relaxed);
+    std::uint64_t     curr_write = write_head_.load(std::memory_order_relaxed);
 
     while (true) {
-        std::uint64_t curr_read = read_tail.load(std::memory_order_relaxed);
+        std::uint64_t curr_read = read_tail_.load(std::memory_order_relaxed);
         if (curr_write + total_size - curr_read >= payload_buf_size) {
             return std::nullopt;  // Exhausted payload buffer
         }
@@ -136,7 +202,7 @@ std::optional<std::uint64_t> Arena::TryAllocateSpace(
         const std::uint64_t alloc_offset = curr_write + padding;
 
         const std::uint64_t next_write = alloc_offset + total_size;
-        if (write_head.compare_exchange_weak(
+        if (write_head_.compare_exchange_weak(
                 curr_write, next_write, std::memory_order_relaxed
             )) {
             return alloc_offset;

@@ -32,6 +32,8 @@ public:
         std::uint32_t node_id, const std::uint8_t* in, std::uint32_t length
     ) noexcept;
 
+    void GarbageCollection() noexcept;
+
     const std::uint32_t num_slots;
     const std::size_t   payload_buf_size;
 
@@ -49,8 +51,8 @@ private:
     float*        vectors_;  // Vector array
     std::uint8_t* payload_buf_;
 
-    std::atomic<std::uint64_t> write_head;
-    std::atomic<std::uint64_t> read_tail;
+    std::atomic<std::uint64_t> write_head_;
+    std::atomic<std::uint64_t> read_tail_;
 
     std::unique_ptr<BufPool> buf_pool_;
 };
