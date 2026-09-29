@@ -15,54 +15,55 @@ import (
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	cfg, err := readConfigFromPipe()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "gateway config: %v\n", err)
-		os.Exit(1)
-	}
-
-	gw, err := httpapi.NewGateway(cfg)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "gateway init: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Monitor death pipe closure
-	go func() {
-		pipeFD := os.Getenv("PARENT_PIPE_FD")
-		if pipeFD != "" {
-			fd, _ := strconv.Atoi(pipeFD)
-			pipe := os.NewFile(uintptr(fd), "parent_pipe")
-			if pipe != nil {
-				// Block until pipe closes (parent shutdown signal).
-				_, _ = io.Copy(io.Discard, pipe)
-				_ = pipe.Close()
-				stop()
-			}
-		}
-	}()
-
-	go func() {
-		if err := gw.Start(); err != nil {
-			fmt.Fprintf(os.Stderr, "gateway: %v\n", err)
-			stop()
-		}
-	}()
-
-	<-ctx.Done() // Wait for OS signal or pipe closure
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Gateway.ShutdownTimeout)
-	defer cancel()
-	if err := gw.Terminate(shutdownCtx); err != nil {
-		fmt.Fprintf(os.Stderr, "gateway shutdown: %v\n", err)
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "gateway exit: %v", err)
 		os.Exit(1)
 	}
 }
 
-func readConfigFromPipe() (*config.GatewayEnvelop, error) {
+func run() error {
+	sigCtx, sigStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer sigStop()
+
+	parent, err := parentPipe()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = parent.Close() }()
+
+	var cfg config.GatewayEnvelop
+	if err := json.NewDecoder(parent).Decode(&cfg); err != nil {
+		return err
+	}
+
+	gw, err := httpapi.NewGateway(&cfg)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		_, err := io.Copy(io.Discard, parent)
+		if err != nil && !errors.Is(err, os.ErrClosed) {
+			// Failed reading parent pipe. Log.
+		}
+		sigStop()
+	}()
+
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- gw.Start() }()
+
+	var runErr error
+	select {
+	case <-sigCtx.Done():
+	case runErr = <-serveErr:
+	}
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.Gateway.ShutdownTimeout)
+	defer shutdownCancel()
+	return errors.Join(runErr, gw.Terminate(shutdownCtx))
+}
+
+func parentPipe() (*os.File, error) {
 	pipeFD := os.Getenv("PARENT_PIPE_FD")
 	if pipeFD == "" {
 		return nil, errors.New("PARENT_PIPE_FD not set")
@@ -75,18 +76,8 @@ func readConfigFromPipe() (*config.GatewayEnvelop, error) {
 
 	pipe := os.NewFile(uintptr(fd), "parent_pipe")
 	if pipe == nil {
-		return nil, fmt.Errorf("failed to open pipe FD %d", fd)
+		return nil, fmt.Errorf("open pipe FD: %d", fd)
 	}
 
-	configData, err := io.ReadAll(pipe)
-	if err != nil {
-		return nil, fmt.Errorf("read from pipe: %w", err)
-	}
-
-	var cfg config.GatewayEnvelop
-	if err := json.Unmarshal(configData, &cfg); err != nil {
-		return nil, fmt.Errorf("unmarshal: %w", err)
-	}
-
-	return &cfg, nil
+	return pipe, nil
 }
