@@ -47,7 +47,6 @@ func NewGateway(cfg *config.GatewayEnvelop) (*Gateway, error) {
 	gw.addCloser(conn)
 
 	if err := pollEngineReady(conn); err != nil {
-		conn.Close()
 		return nil, fmt.Errorf("engine readiness check: %w", err)
 	}
 	gw.stub = pb.NewCacheServiceClient(conn)
@@ -130,7 +129,7 @@ func pollEngineReady(conn *grpc.ClientConn) error {
 
 	for {
 		resp, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return fmt.Errorf("health watch stream closed unexpectedly")
 		}
 		if err != nil {

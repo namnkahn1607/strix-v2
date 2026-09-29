@@ -73,5 +73,5 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 
 func respondDownstream(w http.ResponseWriter, payload []byte) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(payload) // Should handle error
+	_, _ = w.Write(payload) // Should handle error
 }

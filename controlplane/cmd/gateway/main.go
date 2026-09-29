@@ -37,9 +37,9 @@ func main() {
 			fd, _ := strconv.Atoi(pipeFD)
 			pipe := os.NewFile(uintptr(fd), "parent_pipe")
 			if pipe != nil {
-				// Block until pipe closes (parent shutdown signal)
-				io.Copy(io.Discard, pipe)
-				pipe.Close()
+				// Block until pipe closes (parent shutdown signal).
+				_, _ = io.Copy(io.Discard, pipe)
+				_ = pipe.Close()
 				stop()
 			}
 		}

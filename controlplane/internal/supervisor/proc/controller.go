@@ -44,7 +44,6 @@ func Execute() error {
 	if err != nil {
 		return fmt.Errorf("engine death pipe: %w", err)
 	}
-	defer writeC.Close()
 
 	engineEnc := json.NewEncoder(writeC)
 	if err := engineEnc.Encode(config.EngineEnvelop{
@@ -69,7 +68,6 @@ func Execute() error {
 	if err != nil {
 		return fmt.Errorf("gateway death pipe: %w", err)
 	}
-	defer writeB.Close()
 
 	gatewayEnc := json.NewEncoder(writeB)
 	if err := gatewayEnc.Encode(config.GatewayEnvelop{
