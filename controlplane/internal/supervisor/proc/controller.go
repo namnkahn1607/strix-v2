@@ -90,6 +90,7 @@ func Execute() error {
 		Gateway:   opts.Gateway,
 		Upstreams: opts.Upstreams,
 	}); err != nil {
+		drain(opts.Supervisor.DrainTimeout, active, deathChan)
 		return fmt.Errorf("encode gateway config: %w", err)
 	}
 
