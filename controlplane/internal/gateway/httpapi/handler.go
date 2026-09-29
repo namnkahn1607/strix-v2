@@ -35,8 +35,8 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Assume the path to the client's request prompt was only `/prompt/`.
-	promptStr, _, _, err := jsonparser.Get(reqBody, "prompt")
-	if err != nil || len(promptStr) == 0 {
+	promptBytes, dataType, _, err := jsonparser.Get(reqBody, "prompt")
+	if err != nil || dataType != jsonparser.String || len(promptBytes) == 0 {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
@@ -51,14 +51,14 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 		respondDownstream(w, payload)
 	}
 
-	if len(promptStr) > maxPromptLen {
+	if len(promptBytes) > maxPromptLen {
 		upstreamFallback()
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), stubTimeout)
 	defer cancel()
-	resp, err := gw.stub.CheckCache(ctx, &pb.CheckCacheRequest{Prompt: promptStr})
+	resp, err := gw.stub.CheckCache(ctx, &pb.CheckCacheRequest{Prompt: promptBytes})
 	if err != nil {
 		upstreamFallback()
 		return
