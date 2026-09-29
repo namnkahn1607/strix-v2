@@ -120,9 +120,8 @@ func pollEngineReady(conn *grpc.ClientConn) error {
 	ctx, cancel := context.WithTimeout(context.Background(), readyTimeout)
 	defer cancel()
 
-	stream, err := healthClient.Watch(ctx, &grpc_health_v1.HealthCheckRequest{
-		Service: serviceName,
-	})
+	stream, err := healthClient.Watch(ctx,
+		&grpc_health_v1.HealthCheckRequest{Service: serviceName}, grpc.WaitForReady(true))
 	if err != nil {
 		return fmt.Errorf("start health watch: %w", err)
 	}
