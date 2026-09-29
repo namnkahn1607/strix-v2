@@ -10,6 +10,7 @@ import (
 )
 
 func Parse(path string) (*Options, error) {
+	//nolint: gosec // G304: path not resolving from external value
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read config: %w", err)

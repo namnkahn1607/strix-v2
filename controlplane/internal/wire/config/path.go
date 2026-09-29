@@ -46,6 +46,7 @@ func LoadConfigPath() (string, error) {
 	}
 
 	configPathFile := filepath.Join(configDir, "config_path")
+	//nolint:gosec // G304: directory not resolving from external value
 	data, err := os.ReadFile(configPathFile)
 	if err != nil {
 		if os.IsNotExist(err) {
