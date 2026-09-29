@@ -9,9 +9,16 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strix/internal/wire/config"
+	"sync"
 	"syscall"
 	"time"
 )
+
+type childExit struct {
+	name string
+	pid  int
+	err  error
+}
 
 func Execute() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -37,7 +44,7 @@ func Execute() error {
 
 	const numChildProcs = 2
 	active := make(map[int]*exec.Cmd, numChildProcs)
-	deathChan := make(chan int, numChildProcs)
+	deathChan := make(chan childExit, numChildProcs)
 
 	// Fork Engine process.
 	readC, writeC, err := os.Pipe()
@@ -61,7 +68,15 @@ func Execute() error {
 		return err
 	}
 	active[engineCmd.Process.Pid] = engineCmd
-	supervise(engineCmd, deathChan)
+	supervise("engine", engineCmd, deathChan)
+
+	var deathWriters []*os.File
+	closeDeathWriters := sync.OnceFunc(func() {
+		for _, wr := range deathWriters {
+			_ = wr.Close()
+		}
+	})
+	defer closeDeathWriters()
 
 	// Fork Gateway process.
 	readB, writeB, err := os.Pipe()
@@ -85,22 +100,29 @@ func Execute() error {
 		return err
 	}
 	active[gatewayCmd.Process.Pid] = gatewayCmd
-	supervise(gatewayCmd, deathChan)
+	supervise("gateway", gatewayCmd, deathChan)
 
 	// Event loop: react to the first event occur.
+	var runErr error
 	select {
 	case <-ctx.Done(): // OS signals
 
-	case pid := <-deathChan:
-		delete(active, pid)
+	case exit := <-deathChan:
+		delete(active, exit.pid)
+		if exit.err != nil {
+			runErr = fmt.Errorf("%s (pid %d) exited unexpectedly: %w",
+				exit.name, exit.pid, exit.err)
+		} else {
+			runErr = fmt.Errorf("%s (pid %d) exited unexpectedly with status 0",
+				exit.name, exit.pid)
+		}
 	}
 
 	// Shutdown signals to ALL child processes.
-	_ = writeC.Close()
-	_ = writeB.Close()
+	closeDeathWriters()
 
 	drain(opts.Supervisor.DrainTimeout, active, deathChan)
-	return nil
+	return runErr
 }
 
 func fork(binPath string, pipe *os.File, env []string) (*exec.Cmd, error) {
@@ -116,14 +138,14 @@ func fork(binPath string, pipe *os.File, env []string) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
-func supervise(cmd *exec.Cmd, deathChan chan<- int) {
+func supervise(name string, cmd *exec.Cmd, deathChan chan<- childExit) {
 	go func() {
-		_ = cmd.Wait()
-		deathChan <- cmd.Process.Pid
+		err := cmd.Wait()
+		deathChan <- childExit{name: name, pid: cmd.Process.Pid, err: err}
 	}()
 }
 
-func drain(timeout time.Duration, active map[int]*exec.Cmd, deathChan <-chan int) {
+func drain(timeout time.Duration, active map[int]*exec.Cmd, deathChan <-chan childExit) {
 	if len(active) == 0 {
 		return
 	}
@@ -133,8 +155,8 @@ func drain(timeout time.Duration, active map[int]*exec.Cmd, deathChan <-chan int
 
 	for len(active) > 0 {
 		select {
-		case pid := <-deathChan:
-			delete(active, pid)
+		case exit := <-deathChan:
+			delete(active, exit.pid)
 
 		case <-timer.C:
 			for pid, cmd := range active {
