@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"strix/internal/gateway/pb"
@@ -25,6 +26,10 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxReaderSize)
 	reqBody, err := io.ReadAll(r.Body)
 	if err != nil {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
+			http.Error(w, "Request Entity Too Large", http.StatusRequestEntityTooLarge)
+		}
+
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
