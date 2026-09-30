@@ -24,6 +24,9 @@ func Execute() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
+	runCtx, cancelRun := context.WithCancel(ctx)
+	defer cancelRun()
+
 	gatewayBin, engineBin, err := loadBinaryPath()
 	if err != nil {
 		return err
@@ -62,7 +65,7 @@ func Execute() error {
 
 	engineEnv := append(os.Environ(),
 		"TOKENIZER_PATH="+tokModel, "TRANSFORMER_PATH="+bertModel, "PARENT_PIPE_FD=3")
-	engineCmd, err := fork(engineBin, readC, engineEnv)
+	engineCmd, err := fork(runCtx, engineBin, readC, engineEnv, opts.Supervisor.DrainTimeout)
 	_ = readC.Close()
 	if err != nil {
 		return err
@@ -90,12 +93,11 @@ func Execute() error {
 		Gateway:   opts.Gateway,
 		Upstreams: opts.Upstreams,
 	}); err != nil {
-		drain(opts.Supervisor.DrainTimeout, active, deathChan)
 		return fmt.Errorf("encode gateway config: %w", err)
 	}
 
 	gatewayEnv := append(os.Environ(), "PARENT_PIPE_FD=3")
-	gatewayCmd, err := fork(gatewayBin, readB, gatewayEnv)
+	gatewayCmd, err := fork(runCtx, gatewayBin, readB, gatewayEnv, opts.Supervisor.DrainTimeout)
 	_ = readB.Close()
 	if err != nil {
 		return err
@@ -117,17 +119,24 @@ func Execute() error {
 			runErr = fmt.Errorf("%s (pid %d) exited unexpectedly with status 0",
 				exit.name, exit.pid)
 		}
+		cancelRun()
 	}
 
-	// Shutdown signals to ALL child processes.
-	closeDeathWriters()
+	closeDeathWriters() // Shutdown signals to ALL child processes
+	cancelRun()
+	for len(active) > 0 {
+		exit := <-deathChan
+		delete(active, exit.pid)
+	}
 
-	drain(opts.Supervisor.DrainTimeout, active, deathChan)
 	return runErr
 }
 
-func fork(binPath string, pipe *os.File, env []string) (*exec.Cmd, error) {
-	cmd := exec.Command(binPath)
+func fork(ctx context.Context, binPath string, pipe *os.File,
+	env []string, drainTimeout time.Duration) (*exec.Cmd, error) {
+	cmd := exec.CommandContext(ctx, binPath)
+	cmd.WaitDelay = drainTimeout
+	cmd.Cancel = func() error { return cmd.Process.Signal(syscall.SIGTERM) }
 	cmd.ExtraFiles = []*os.File{pipe}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -144,29 +153,6 @@ func supervise(name string, cmd *exec.Cmd, deathChan chan<- childExit) {
 		err := cmd.Wait()
 		deathChan <- childExit{name: name, pid: cmd.Process.Pid, err: err}
 	}()
-}
-
-func drain(timeout time.Duration, active map[int]*exec.Cmd, deathChan <-chan childExit) {
-	if len(active) == 0 {
-		return
-	}
-
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-
-	for len(active) > 0 {
-		select {
-		case exit := <-deathChan:
-			delete(active, exit.pid)
-
-		case <-timer.C:
-			for pid, cmd := range active {
-				_ = cmd.Process.Kill()
-				delete(active, pid)
-			}
-			return
-		}
-	}
 }
 
 func loadBinaryPath() (gateway, engine string, err error) {
