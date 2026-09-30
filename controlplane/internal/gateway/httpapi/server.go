@@ -63,8 +63,7 @@ func NewGateway(cfg *config.GatewayEnvelop, logger *slog.Logger) (*Gateway, erro
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       60 * time.Second,
-		// Should this logger inherits the "subsystem: httpapi" loggin metadata?
-		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError),
+		ErrorLog:          slog.NewLogLogger(gw.log.Handler(), slog.LevelError),
 	}
 
 	success = true

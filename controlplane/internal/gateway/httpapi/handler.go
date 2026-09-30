@@ -84,7 +84,8 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 
 func (gw *Gateway) respondDownstream(w http.ResponseWriter, r *http.Request, payload []byte) {
 	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write(payload); err != nil {
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if _, err := w.Write(payload); err != nil { // #nosec G705 -- JSON API response (Content-Type + nosniff)
 		gw.log.DebugContext(r.Context(), "downstream write failed",
 			slog.Any("err", err), slog.Int("bytes", len(payload)))
 	}
