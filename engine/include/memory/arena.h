@@ -26,10 +26,10 @@ public:
     Arena(Arena&&)                = delete;
     Arena operator=(Arena&&)      = delete;
 
-    std::optional<absl::Cord> ReadPayload(std::uint32_t node_id) const noexcept;
+    std::optional<absl::Cord> ReadPayload(std::uint32_t nid) const noexcept;
 
     bool WritePayload(
-        std::uint32_t node_id, const std::uint8_t* in, std::uint32_t length
+        std::uint32_t nid, const std::uint8_t* in, std::uint32_t length
     ) noexcept;
 
     void GarbageCollection() noexcept;

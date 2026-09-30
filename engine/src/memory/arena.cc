@@ -38,10 +38,8 @@ Arena::~Arena() {
     Dealloc<std::uint8_t>(payload_buf_, payload_buf_size);
 }
 
-std::optional<absl::Cord> Arena::ReadPayload(
-    std::uint32_t node_id
-) const noexcept {
-    auto& node = nodes_[node_id];
+std::optional<absl::Cord> Arena::ReadPayload(std::uint32_t nid) const noexcept {
+    auto& node = nodes_[nid];
     auto  ctrl = node.control_block.load(std::memory_order_acquire);
 
     auto [state, ref, ver, length, offset] = ControlBlock::Unpack(ctrl);
@@ -80,12 +78,12 @@ std::optional<absl::Cord> Arena::ReadPayload(
 }
 
 bool Arena::WritePayload(
-    std::uint32_t node_id, const std::uint8_t* in, std::uint32_t length
+    std::uint32_t nid, const std::uint8_t* in, std::uint32_t length
 ) noexcept {
-    if (node_id >= num_slots) {
+    if (nid >= num_slots) {
         return false;
     }
-    auto& node = nodes_[node_id];
+    auto& node = nodes_[nid];
 
     const auto [state, ref, ver, old_len, old_off] = node.LoadCtrl();
     if (state != NodeState::kPending) {
@@ -100,9 +98,7 @@ bool Arena::WritePayload(
     const auto header_offset = opt_offset.value();
     const auto header_index  = ActualIndex(header_offset);
 
-    const PayloadHeader header{
-        PayloadHeader::kValidIdentifier, node_id, length
-    };
+    const PayloadHeader header{PayloadHeader::kValidIdentifier, nid, length};
     std::memcpy(payload_buf_ + header_index, &header, sizeof(PayloadHeader));
 
     const auto text_index = header_index + sizeof(PayloadHeader);
