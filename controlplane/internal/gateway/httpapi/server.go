@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strix/internal/gateway/middleware"
 	"strix/internal/gateway/pb"
 	"strix/internal/gateway/upstream"
 	"strix/internal/wire/config"
@@ -55,7 +56,7 @@ func NewGateway(cfg *config.GatewayEnvelop, logger *slog.Logger) (*Gateway, erro
 	gw.stub = pb.NewCacheServiceClient(conn)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc(cfg.Gateway.Http.ProxyEndpoint, gw.Handle)
+	mux.HandleFunc(cfg.Gateway.Http.ProxyEndpoint, middleware.WithRequestID(gw.Handle))
 	gw.server = &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Gateway.Http.Port),
 		Handler:           mux,

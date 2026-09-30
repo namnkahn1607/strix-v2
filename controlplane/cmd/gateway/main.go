@@ -11,13 +11,32 @@ import (
 	"os/signal"
 	"strconv"
 	"strix/internal/gateway/httpapi"
+	"strix/internal/gateway/middleware"
 	"strix/internal/wire/config"
 	"syscall"
 )
 
+type ctxHandler struct{ slog.Handler }
+
+func (h ctxHandler) Handle(ctx context.Context, r slog.Record) error {
+	if id, ok := middleware.RequestIDFrom(ctx); ok {
+		r.AddAttrs(slog.String("request_id", id))
+	}
+	return h.Handler.Handle(ctx, r)
+}
+
+func (h ctxHandler) WithAttrs(a []slog.Attr) slog.Handler {
+	return ctxHandler{h.Handler.WithAttrs(a)}
+}
+
+func (h ctxHandler) WithGroup(n string) slog.Handler {
+	return ctxHandler{h.Handler.WithGroup(n)}
+}
+
 func main() {
 	lvl := new(slog.LevelVar)
-	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: lvl})).
+	logger := slog.New(ctxHandler{slog.NewJSONHandler(os.Stderr,
+		&slog.HandlerOptions{Level: lvl})}).
 		With(slog.String("component", "gateway"), slog.Int("pid", os.Getpid()))
 	slog.SetDefault(logger)
 
