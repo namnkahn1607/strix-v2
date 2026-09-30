@@ -1,5 +1,6 @@
 #include "memory/arena.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstring>
 #include <optional>
@@ -132,10 +133,11 @@ void Arena::GarbageCollection() noexcept {
             continue;
         }
 
+        const auto nid       = header->node_id;
         const auto text_len  = header->length;
         const auto total_len = sizeof(PayloadHeader) + text_len;
 
-        auto& node = nodes_[header->node_id];
+        auto& node = nodes_[nid];
 
         const auto [state, ref, ver, length, offset] = node.LoadCtrl();
         auto expected = ControlBlock::Pack(state, ref, ver, length, offset);
@@ -167,6 +169,47 @@ void Arena::GarbageCollection() noexcept {
         }
 
         // Hot node: grant Second Chance while cooling its reference bit.
+        const auto opt_offset = TryAllocateSpace(text_len);
+        if (!opt_offset.has_value()) {
+            // No room to rescue. Force eviction.
+            const auto desired = ControlBlock::Pack(
+                NodeState::kDead, RefBit::kCold, ver, length, offset
+            );
+            if (node.control_block.compare_exchange_strong(
+                    expected, desired, std::memory_order_release,
+                    std::memory_order_relaxed
+                )) {
+                read_tail_.fetch_add(total_len, std::memory_order_relaxed);
+                continue;
+            }
+            // Again: should this CAS fail?
+        }
+
+        const auto rescued_offset = opt_offset.value();
+        const auto rescued_index  = ActualIndex(rescued_offset);
+
+        const PayloadHeader rescued_header{
+            PayloadHeader::kValidIdentifier, nid, text_len
+        };
+        std::memcpy(
+            payload_buf_ + rescued_index, &rescued_header, sizeof(PayloadHeader)
+        );
+
+        auto src_idx = ActualIndex(tail + sizeof(PayloadHeader));
+        auto dst_idx = ActualIndex(rescued_index + sizeof(PayloadHeader));
+
+        std::uint64_t bytes_left = text_len;
+        while (bytes_left > 0) {
+            const auto src_cont = payload_buf_size - src_idx;
+            const auto dst_cont = payload_buf_size - dst_idx;
+            const auto chunk    = std::min({bytes_left, src_cont, dst_cont});
+
+            std::memcpy(payload_buf_ + dst_idx, payload_buf_ + src_idx, chunk);
+            bytes_left -= chunk;
+            src_idx = ActualIndex(src_idx + chunk);
+            dst_idx = ActualIndex(dst_idx + chunk);
+        }
+
         const auto desired =
             ControlBlock::Pack(state, RefBit::kCold, ver, length, offset);
         if (node.control_block.compare_exchange_strong(
