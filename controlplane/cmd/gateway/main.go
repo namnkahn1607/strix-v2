@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/signal"
 	"strconv"
@@ -15,13 +16,18 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
+	lvl := new(slog.LevelVar)
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: lvl})).
+		With(slog.String("component", "gateway"), slog.Int("pid", os.Getpid()))
+	slog.SetDefault(logger)
+
+	if err := run(logger); err != nil {
 		fmt.Fprintf(os.Stderr, "gateway exit: %v", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(logger *slog.Logger) error {
 	sigCtx, sigStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer sigStop()
 
@@ -36,7 +42,7 @@ func run() error {
 		return err
 	}
 
-	gw, err := httpapi.NewGateway(&cfg)
+	gw, err := httpapi.NewGateway(&cfg, logger)
 	if err != nil {
 		return err
 	}
@@ -45,7 +51,9 @@ func run() error {
 		_, err := io.Copy(io.Discard, parent)
 		if err != nil && !errors.Is(err, os.ErrClosed) {
 			// Failed reading parent pipe. Log.
+			logger.Warn("parent pipe read failed", slog.Any("err", err))
 		}
+		logger.Info("parent pipe close, shutting down")
 		sigStop()
 	}()
 
@@ -55,6 +63,7 @@ func run() error {
 	var runErr error
 	select {
 	case <-sigCtx.Done():
+		logger.Info("shutdown requested")
 	case runErr = <-serveErr:
 	}
 

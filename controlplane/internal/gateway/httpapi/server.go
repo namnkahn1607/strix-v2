@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"slices"
 	"strix/internal/gateway/pb"
@@ -26,10 +27,12 @@ type Gateway struct {
 	closers  []io.Closer
 	stopOnce sync.Once
 	stopErr  error
+
+	log *slog.Logger
 }
 
-func NewGateway(cfg *config.GatewayEnvelop) (*Gateway, error) {
-	gw := &Gateway{}
+func NewGateway(cfg *config.GatewayEnvelop, logger *slog.Logger) (*Gateway, error) {
+	gw := &Gateway{log: logger.With("subsystem", "httpapi")}
 
 	var success bool
 	defer func() {
@@ -60,6 +63,8 @@ func NewGateway(cfg *config.GatewayEnvelop) (*Gateway, error) {
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       60 * time.Second,
+		// Should this logger inherits the "subsystem: httpapi" loggin metadata?
+		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 
 	success = true

@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strix/internal/gateway/pb"
 	"time"
 
 	"github.com/buger/jsonparser"
+	"google.golang.org/grpc/status"
 )
 
 func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
@@ -42,13 +44,17 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	upstreamFallback := func() {
+		// Rate limiting for upstream fallback logging?
+		gw.log.WarnContext(r.Context(), "cache check miss, falling back to upstream",
+			slog.String("grpc_code", status.Code(err).String()), slog.Any("err", err))
+
 		payload, err := gw.client.Forward(r.Context(), reqBody, r.Header)
 		if err != nil {
 			http.Error(w, "Bad Gateway", http.StatusBadGateway)
 			return
 		}
 
-		respondDownstream(w, payload)
+		gw.respondDownstream(w, r, payload)
 	}
 
 	if len(promptBytes) > maxPromptLen {
@@ -66,7 +72,7 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 
 	switch resp.GetCheckState() {
 	case pb.CacheState_HIT:
-		respondDownstream(w, resp.GetCachedPayload())
+		gw.respondDownstream(w, r, resp.GetCachedPayload())
 
 	case pb.CacheState_PENDING: // Herd control
 	case pb.CacheState_MISS: // Herd control
@@ -76,7 +82,10 @@ func (gw *Gateway) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func respondDownstream(w http.ResponseWriter, payload []byte) {
+func (gw *Gateway) respondDownstream(w http.ResponseWriter, r *http.Request, payload []byte) {
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(payload) // Should handle error
+	if _, err := w.Write(payload); err != nil {
+		gw.log.DebugContext(r.Context(), "downstream write failed",
+			slog.Any("err", err), slog.Int("bytes", len(payload)))
+	}
 }
