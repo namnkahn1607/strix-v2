@@ -13,15 +13,13 @@ include(cmake/add-module.cmake)
 set(PUBLIC_HEADER_ROOT "${CMAKE_SOURCE_DIR}/include")
 
 add_library(engine_options INTERFACE)
+set(GCC_CLANG_WARNINGS -march=x86-64-v3 -Wall -Wextra -Wpendatic -Wshadow -Wconversion)
+set(CLANG_ONLY_WARNINGS -Wunreachable-code)
 target_compile_options(engine_options INTERFACE
-    -march=x86-64-v3 -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wunreachable-code)
+    "$<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang>:${GCC_CLANG_WARNINGS}>"
+    "$<$<COMPILE_LANG_AND_ID:CXX,Clang,AppleClang>:${CLANG_ONLY_WARNINGS}>")
 
-add_subdirectory(src/inference)
-add_subdirectory(src/server)
-
-add_executable(strix_engine src/main.cc)
-target_link_libraries(strix_engine
-    PRIVATE engine_options engine_inference engine_server)
+add_subdirectory(src)
 
 if(CMAKE_EXPORT_COMPILE_COMMANDS)
     file(CREATE_LINK "${CMAKE_BINARY_DIR}/compile_commands.json"
