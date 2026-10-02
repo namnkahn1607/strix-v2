@@ -1,4 +1,5 @@
 add_subdirectory(inference)
+add_subdirectory(ann)
 add_subdirectory(server)
 
 add_executable(strix_engine main.cc)
