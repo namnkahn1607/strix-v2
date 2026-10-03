@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "memory/control_block.h"
-#include "treiber_stack.h"
+#include "base/treiber_stack.h"
 
 namespace strix::memory {
 

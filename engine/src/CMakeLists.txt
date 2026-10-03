@@ -1,3 +1,4 @@
+add_subdirectory(base)
 add_subdirectory(inference)
 add_subdirectory(ann)
 add_subdirectory(server)

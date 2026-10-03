@@ -1,1 +1,3 @@
-add_module(memory SOURCES arena.cc)
+add_module(memory
+    SOURCES arena.cc
+    DEPS_PRIVATE engine_base)
