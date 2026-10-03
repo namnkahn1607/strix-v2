@@ -86,7 +86,7 @@ bool Arena::WritePayload(
     }
     auto& node = nodes_[nid];
 
-    const auto [state, ref, ver, old_len, old_off] = node.LoadCtrl();
+    const auto [state, ref, ver, old_len, old_off] = node.Load();
     if (state != NodeState::kPending) {
         return false;
     }
@@ -139,7 +139,7 @@ void Arena::GarbageCollection() noexcept {
 
         auto& node = nodes_[nid];
 
-        const auto [state, ref, ver, length, offset] = node.LoadCtrl();
+        const auto [state, ref, ver, length, offset] = node.Load();
         auto expected = ControlBlock::Pack(state, ref, ver, length, offset);
 
         if (state == NodeState::kDead) {
