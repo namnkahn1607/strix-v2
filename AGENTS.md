@@ -41,6 +41,7 @@ Concurrency correctness outranks everything else in this file.
 - Comments explain why, or state a non-obvious invariant or memory ordering justification but not
   restate what the code does. No banner or section comments. Do not rewrite an existing comment unless
   the code behavior it describe changes.
+- Formatting (`gofmt` / `clang-format`) is automatic after file writes. Don't hand-format.
 
 ## Accepted limitations (do not "fix" unless asked)
 

@@ -1,0 +1,23 @@
+{
+    "strix-hook": {
+        "PostToolUse": [
+            {
+                "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "d=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; exec \"$d/.agents/hooks/format-on-write.sh\"",
+                        "timeout": 30
+                    }
+                ]
+            }
+        ],
+        "PreInvocation": [
+            {
+                "type": "command",
+                "command": "d=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; exec \"$d/.agents/hooks/announce-reformat.sh\"",
+                "timeout": 5
+            }
+        ]
+    }
+}
