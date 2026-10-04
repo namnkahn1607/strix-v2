@@ -1,6 +1,9 @@
 ---
 trigger: glob
-globs: "**/ann/**, **/memory/**,  **/worker/**"
+globs:
+  - "engine/{src,include}/**/ann/**"
+  - "engine/{src,include}/**/memory/**"
+  - "engine/{src,include}/**/worker/**"
 description: "Concurrency contracts for the lock-free data plane: node seqlock-style versioning, hazard offsets, GC reclaimation, free list, ring buffers."
 ---
 
