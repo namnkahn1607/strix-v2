@@ -5,6 +5,7 @@ ipc:
   socket_address: "unix:///tmp/strix.sock"
 
 gateway:
+  shutdown_timeout: 5s
   http:
     port: 8080
     proxy_endpoint: "/v1/cache/strix"
@@ -14,10 +15,9 @@ gateway:
     set_cache_timeout: 50ms
   writeback:
     pool_size: 8                # REQUIRED
-    job_queue_capacity: 1000    # REQUIRED
+    job_queue_capacity: 1000
   cache_policy:
     max_prompt_len: 1536        # REQUIRED
-  shutdown_timeout: 5s
 
 engine:
   shutdown_timeout: 3s
@@ -43,11 +43,11 @@ engine:
     buffer_pool_capacity: 64
 
 upstreams:
-  - name: primary
-    type: anthropic
-    endpoint: "https://api.anthropic.com/v1/messages"
+  - name: primary                                       # REQUIRED
+    type: anthropic                                     # REQUIRED
+    endpoint: "https://api.anthropic.com/v1/messages"   # REQUIRED
     auth_kind: api_key
-    auth_key_env_var: STRIX_ANTHROPIC_API_KEY
+    auth_key_env_var: STRIX_ANTHROPIC_API_KEY           # REQUIRED (only when auth_kind != "none")
     max_idle_conns_per_host: 8
     idle_conn_timeout: 60s
     response_header_timeout: 15s

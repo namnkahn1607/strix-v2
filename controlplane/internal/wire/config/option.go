@@ -19,10 +19,11 @@ type IpcOptions struct {
 }
 
 type GatewayOptions struct {
-	Http            HttpOptions      `yaml:"http" json:"http"`
-	RpcClient       RpcClientOptions `yaml:"rpc_client" json:"rpc_client"`
-	Writeback       WritebackOptions `yaml:"writeback" json:"writeback"`
-	ShutdownTimeout time.Duration    `yaml:"shutdown_timeout" json:"shutdown_timeout"`
+	ShutdownTimeout time.Duration      `yaml:"shutdown_timeout" json:"shutdown_timeout"`
+	Http            HttpOptions        `yaml:"http" json:"http"`
+	RpcClient       RpcClientOptions   `yaml:"rpc_client" json:"rpc_client"`
+	Writeback       WritebackOptions   `yaml:"writeback" json:"writeback"`
+	CachePolicy     CachePolicyOptions `yaml:"cache_policy" json:"cache_policy"`
 }
 
 type EngineOptions struct {
