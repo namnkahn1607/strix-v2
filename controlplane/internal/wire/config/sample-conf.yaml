@@ -21,6 +21,26 @@ gateway:
 
 engine:
   shutdown_timeout: 3s
+  rpc_server:
+    worker_pool_size: 3
+  ivf:
+    num_clusters: 1024
+    max_cluster_size: 1024
+    staging_buffer_capacity: 4096
+  calibration:
+    sample_size: 65536
+    recalibrate_trigger_count: 16384
+    mini_batch_size: 1024
+    max_lloyd_iteration: 16
+    min_convergence: 0.0001
+    grace_period_seconds: 1
+  search:
+    similarity_threshold: 0.85
+    top_k: 4
+  storage:
+    max_slots: 524288
+    payload_buffer_bytes: 4294967296
+    buffer_pool_capacity: 64
 
 upstreams:
   - name: primary
