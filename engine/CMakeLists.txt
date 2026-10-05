@@ -14,7 +14,7 @@ include(cmake/add-module.cmake)
 set(PUBLIC_HEADER_ROOT "${CMAKE_SOURCE_DIR}/include")
 
 add_library(engine_options INTERFACE)
-set(GCC_CLANG_WARNINGS -march=x86-64-v3 -Wall -Wextra -Wpendatic -Wshadow -Wconversion)
+set(GCC_CLANG_WARNINGS -march=x86-64-v3 -Wall -Wextra -Wpedantic -Wshadow -Wconversion)
 set(CLANG_ONLY_WARNINGS -Wunreachable-code)
 target_compile_options(engine_options INTERFACE
     "$<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang>:${GCC_CLANG_WARNINGS}>"
