@@ -20,13 +20,13 @@ public:
     // any parse or validation failure.
     static Options FromJson(const nlohmann::json& j);
 
-    const ArenaOptions&       Arena() noexcept { return arena_; }
-    const GrpcOptions&        Grpc() noexcept { return grpc_; }
-    const IvfOptions&         Ivf() noexcept { return ivf_; }
-    const SearchOptions&      Search() noexcept { return search_; }
-    const CalibrationOptions& Calibration() noexcept { return calibration_; }
+    const ArenaOptions&       Arena() const noexcept { return arena_; }
+    const GrpcOptions&        Grpc() const noexcept { return grpc_; }
+    const IvfOptions&         Ivf() const noexcept { return ivf_; }
+    const SearchOptions&      Search() const noexcept { return search_; }
+    const CalibrationOptions& Calibration() const noexcept { return calibration_; }
 
-    Seconds ShutdownTimeout() noexcept { return shutdown_timeout_; }
+    Seconds ShutdownTimeout() const noexcept { return shutdown_timeout_; }
 
 private:
     explicit Options(
