@@ -3,11 +3,12 @@
 #include <algorithm>
 #include <atomic>
 #include <cstring>
+#include <memory>
 #include <optional>
-#include <stdexcept>
 
 #include "allocator.h"
 #include "buffer_pool.h"
+#include "config/arena.h"
 #include "inference/vector.h"
 #include "memory/control_block.h"
 #include "memory/state.h"
@@ -15,22 +16,12 @@
 
 namespace strix::memory {
 
-Arena::Arena(std::uint32_t num_slots, std::size_t payload_buf_size)
-    : num_slots{num_slots}, payload_buf_size{payload_buf_size} {
-    if (num_slots == 0) {
-        throw std::invalid_argument("Arena slots must be non-zero");
-    }
-
-    nodes_   = Alloc<Node>(num_slots);
-    vectors_ = Alloc<float>(num_slots * inference::kVectorDim);
-
-    if (payload_buf_size == 0) {
-        throw std::invalid_argument("Payload buffer size must be non-zero");
-    } else if ((payload_buf_size & (payload_buf_size - 1)) != 0) {
-        throw std::invalid_argument("Payload buffer size must be a power of 2");
-    }
-
+Arena::Arena(config::ArenaOptions& opt)
+    : num_slots{opt.max_slots}, payload_buf_size{opt.payload_buf_size} {
+    nodes_       = Alloc<Node>(num_slots);
+    vectors_     = Alloc<float>(num_slots * inference::kVectorDim);
     payload_buf_ = Alloc<std::uint8_t>(payload_buf_size);
+    buf_pool_    = std::make_unique<BufPool>(opt.buf_pool_cap);
 }
 
 Arena::~Arena() {

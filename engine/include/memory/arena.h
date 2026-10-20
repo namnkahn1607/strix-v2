@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 
+#include "config/arena.h"
 #include "meta_node.h"
 
 namespace strix::memory {
@@ -18,7 +19,7 @@ class BufPool;
 // Thread-safe as each API has its own synchronization guarantees.
 class Arena final {
 public:
-    explicit Arena(std::uint32_t num_slots, std::size_t payload_buf_size);
+    explicit Arena(config::ArenaOptions& opt);
     ~Arena();
 
     Arena(const Arena&)           = delete;
@@ -51,8 +52,8 @@ private:
     float*        vectors_;  // Vector array
     std::uint8_t* payload_buf_;
 
-    std::atomic<std::uint64_t> write_head_;
-    std::atomic<std::uint64_t> read_tail_;
+    std::atomic<std::uint64_t> write_head_{0};
+    std::atomic<std::uint64_t> read_tail_{0};
 
     std::unique_ptr<BufPool> buf_pool_;
 };
