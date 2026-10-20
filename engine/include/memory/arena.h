@@ -31,7 +31,7 @@ public:
 
     bool WritePayload(std::uint32_t nid, const std::uint8_t* in, std::uint32_t length) noexcept;
 
-    void GarbageCollection() noexcept;
+    void GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept;
 
     const std::uint32_t num_slots;
     const std::size_t   payload_buf_size;

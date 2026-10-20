@@ -3,13 +3,14 @@
 // clang-format on
 
 #include <algorithm>
+#include <atomic>
 
 #include "payload_header.h"
 
 namespace strix::memory {
 
-void Arena::GarbageCollection() noexcept {
-    while (true) {
+void Arena::GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept {
+    while (!shutdown_req.load(std::memory_order_relaxed)) {
         const std::uint64_t tail = read_tail_.load(std::memory_order_relaxed);
 
         const auto tail_index = ActualIndex(tail);
