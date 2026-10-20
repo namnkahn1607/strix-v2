@@ -30,9 +30,8 @@ public:
 
 private:
     explicit Options(
-        ArenaOptions arena, GrpcOptions grpc, IvfOptions ivf,
-        CalibrationOptions calibration, SearchOptions search,
-        Seconds shutdown_timeout
+        ArenaOptions arena, GrpcOptions grpc, IvfOptions ivf, CalibrationOptions calibration,
+        SearchOptions search, Seconds shutdown_timeout
     );
 
     void Validate() const;

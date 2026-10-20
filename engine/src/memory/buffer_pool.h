@@ -9,8 +9,8 @@
 #include <memory>
 #include <vector>
 
-#include "memory/control_block.h"
 #include "base/treiber_stack.h"
+#include "memory/control_block.h"
 
 namespace strix::memory {
 
@@ -19,9 +19,7 @@ public:
     explicit BufPool(std::uint32_t capacity) : stack_{capacity} {
         buffers_.reserve(capacity);
         for (std::uint32_t i = 0; i < capacity; ++i) {
-            buffers_.push_back(
-                std::make_unique_for_overwrite<uint8_t[]>(kMaxPayloadLength)
-            );
+            buffers_.push_back(std::make_unique_for_overwrite<uint8_t[]>(kMaxPayloadLength));
         }
     }
 
@@ -45,9 +43,7 @@ public:
 
     // Wraps a buffer previously returned by `Acquire()` with an `absl::Cord`.
     // The buffer is released back into pool once its `ref_count` reaches 0.
-    absl::Cord Wrap(
-        std::uint8_t* buf, std::uint32_t id, std::uint32_t length
-    ) noexcept {
+    absl::Cord Wrap(std::uint8_t* buf, std::uint32_t id, std::uint32_t length) noexcept {
         return absl::MakeCordFromExternal(
             absl::string_view{reinterpret_cast<const char*>(buf), length},
             [this, id]() noexcept { this->stack_.Push(id); }

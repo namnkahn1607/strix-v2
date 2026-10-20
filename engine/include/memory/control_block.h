@@ -42,16 +42,14 @@ struct ControlBlock {
     std::uint64_t offset;  // Virtual buffer offset (max 64 GiB).
 
     static std::uint64_t Pack(
-        NodeState state, RefBit ref, std::uint8_t ver, std::uint32_t length,
-        std::uint64_t offset
+        NodeState state, RefBit ref, std::uint8_t ver, std::uint32_t length, std::uint64_t offset
     ) noexcept {
         auto state64 = static_cast<uint64_t>(state);
         auto ref64   = static_cast<uint64_t>(ref);
         auto ver64   = static_cast<uint64_t>(ver);
         auto len64   = static_cast<uint64_t>(length);
         return ((state64 & kNodeStateMask) << kNodeStateShift) |
-               ((ref64 & kRefBitMask) << kRefBitShift) |
-               ((ver64 & kVersionMask) << kVersionShift) |
+               ((ref64 & kRefBitMask) << kRefBitShift) | ((ver64 & kVersionMask) << kVersionShift) |
                (len64 << kLengthShift) | (offset & kVirtualOffsetMask);
     }
 
@@ -60,9 +58,7 @@ struct ControlBlock {
             static_cast<NodeState>((ctrl >> kNodeStateShift) & kNodeStateMask),
             static_cast<RefBit>((ctrl >> kRefBitShift) & kRefBitMask),
             static_cast<std::uint8_t>((ctrl >> kVersionShift) & kVersionMask),
-            static_cast<std::uint32_t>(
-                (ctrl >> kLengthShift) & kMaxPayloadLength
-            ),
+            static_cast<std::uint32_t>((ctrl >> kLengthShift) & kMaxPayloadLength),
             ctrl & kVirtualOffsetMask
         };
     }
@@ -75,8 +71,7 @@ static_assert(kLengthShift == 36, "36-bit offset at last");
 static_assert(
     ((kNodeStateMask << kNodeStateShift) | (kRefBitMask << kRefBitShift) |
      (kVersionMask << kVersionShift) |
-     (static_cast<std::uint64_t>(kMaxPayloadLength) << kLengthShift) |
-     kVirtualOffsetMask) == ~0ull,
+     (static_cast<std::uint64_t>(kMaxPayloadLength) << kLengthShift) | kVirtualOffsetMask) == ~0ull,
     "All fields form an exact 64-bit partition"
 );
 

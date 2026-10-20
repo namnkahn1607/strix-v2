@@ -29,9 +29,7 @@ public:
 
     std::optional<absl::Cord> ReadPayload(std::uint32_t nid) const noexcept;
 
-    bool WritePayload(
-        std::uint32_t nid, const std::uint8_t* in, std::uint32_t length
-    ) noexcept;
+    bool WritePayload(std::uint32_t nid, const std::uint8_t* in, std::uint32_t length) noexcept;
 
     void GarbageCollection() noexcept;
 
@@ -44,9 +42,7 @@ private:
     }
 
     // Returns the virtual offset at which caller can begin writing to.
-    std::optional<std::uint64_t> TryAllocateSpace(
-        std::uint32_t length
-    ) noexcept;
+    std::optional<std::uint64_t> TryAllocateSpace(std::uint32_t length) noexcept;
 
     Node*         nodes_;    // Node slot array
     float*        vectors_;  // Vector array

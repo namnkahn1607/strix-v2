@@ -41,8 +41,7 @@ void Dealloc(T* ptr, std::size_t count) noexcept {
     const std::size_t size = count * sizeof(T);
 
     if (munmap(ptr, size) != 0) {
-        LOG(FATAL) << "munmap failed: "
-                   << std::error_code(errno, std::generic_category()).message()
+        LOG(FATAL) << "munmap failed: " << std::error_code(errno, std::generic_category()).message()
                    << " (ptr=" << ptr << ", size=" << size << ")";
     }
 }

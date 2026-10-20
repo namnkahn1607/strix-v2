@@ -14,9 +14,8 @@ public:
     explicit CacheServiceImpl(const inference::Encoder& encoder);
 
     grpc::Status CheckCache(
-        grpc::ServerContext*                context,
-        const strix::v1::CheckCacheRequest* request,
-        strix::v1::CheckCacheResponse*      response
+        grpc::ServerContext* context, const strix::v1::CheckCacheRequest* request,
+        strix::v1::CheckCacheResponse* response
     ) override;
 
     grpc::Status SetCache(

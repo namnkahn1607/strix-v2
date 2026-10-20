@@ -58,9 +58,7 @@ std::optional<absl::Cord> Arena::ReadPayload(std::uint32_t nid) const noexcept {
     auto res = buf_pool_->Wrap(dst, pool_id, length);
 
     auto       expected = ctrl;
-    const auto desired  = ControlBlock::Pack(
-        NodeState::kReady, RefBit::kHot, ver, length, offset
-    );
+    const auto desired  = ControlBlock::Pack(NodeState::kReady, RefBit::kHot, ver, length, offset);
     node.control_block.compare_exchange_strong(
         expected, desired, std::memory_order_release, std::memory_order_relaxed
     );
@@ -68,9 +66,7 @@ std::optional<absl::Cord> Arena::ReadPayload(std::uint32_t nid) const noexcept {
     return res;
 }
 
-bool Arena::WritePayload(
-    std::uint32_t nid, const std::uint8_t* in, std::uint32_t length
-) noexcept {
+bool Arena::WritePayload(std::uint32_t nid, const std::uint8_t* in, std::uint32_t length) noexcept {
     if (nid >= num_slots) {
         return false;
     }
@@ -104,9 +100,7 @@ bool Arena::WritePayload(
     return true;
 }
 
-std::optional<std::uint64_t> Arena::TryAllocateSpace(
-    std::uint32_t length
-) noexcept {
+std::optional<std::uint64_t> Arena::TryAllocateSpace(std::uint32_t length) noexcept {
     const std::size_t total_size = sizeof(PayloadHeader) + length;
     std::uint64_t     curr_write = write_head_.load(std::memory_order_relaxed);
 
@@ -119,13 +113,11 @@ std::optional<std::uint64_t> Arena::TryAllocateSpace(
         const auto header_index = ActualIndex(curr_write);
         const auto space_left   = payload_buf_size - header_index;
 
-        auto padding = (space_left < sizeof(PayloadHeader)) ? space_left : 0;
+        auto                padding      = (space_left < sizeof(PayloadHeader)) ? space_left : 0;
         const std::uint64_t alloc_offset = curr_write + padding;
 
         const std::uint64_t next_write = alloc_offset + total_size;
-        if (write_head_.compare_exchange_weak(
-                curr_write, next_write, std::memory_order_relaxed
-            )) {
+        if (write_head_.compare_exchange_weak(curr_write, next_write, std::memory_order_relaxed)) {
             return alloc_offset;
         }
     }

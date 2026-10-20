@@ -20,9 +20,7 @@ struct alignas(64) Node {
     std::atomic<std::uint64_t> control_block;
 
     // Loads and decodes the control block.
-    ControlBlock Load(
-        std::memory_order order = std::memory_order_acquire
-    ) const noexcept {
+    ControlBlock Load(std::memory_order order = std::memory_order_acquire) const noexcept {
         return ControlBlock::Unpack(control_block.load(order));
     }
 };

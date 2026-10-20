@@ -13,13 +13,11 @@ void Arena::GarbageCollection() noexcept {
         const std::uint64_t tail = read_tail_.load(std::memory_order_relaxed);
 
         const auto tail_index = ActualIndex(tail);
-        if (const auto padding = payload_buf_size - tail_index;
-            padding < sizeof(PayloadHeader)) {
+        if (const auto padding = payload_buf_size - tail_index; padding < sizeof(PayloadHeader)) {
             read_tail_.fetch_add(padding, std::memory_order_relaxed);
         }
 
-        const auto* header =
-            reinterpret_cast<const PayloadHeader*>(payload_buf_ + tail_index);
+        const auto* header = reinterpret_cast<const PayloadHeader*>(payload_buf_ + tail_index);
         if (header->identifier != PayloadHeader::kValidIdentifier) {
             // Reading an invalid PayloadHeader.
             // Reluctantly advance by 1 byte and retry.
@@ -50,11 +48,9 @@ void Arena::GarbageCollection() noexcept {
 
         if (ref == RefBit::kCold) {
             // Cold node: evict immeditately.
-            const auto desired =
-                ControlBlock::Pack(NodeState::kDead, ref, ver, length, offset);
+            const auto desired = ControlBlock::Pack(NodeState::kDead, ref, ver, length, offset);
             if (node.control_block.compare_exchange_strong(
-                    expected, desired, std::memory_order_release,
-                    std::memory_order_relaxed
+                    expected, desired, std::memory_order_release, std::memory_order_relaxed
                 )) {
                 read_tail_.fetch_add(total_len, std::memory_order_relaxed);
                 continue;
@@ -66,12 +62,10 @@ void Arena::GarbageCollection() noexcept {
         const auto opt_offset = TryAllocateSpace(text_len);
         if (!opt_offset.has_value()) {
             // No room to rescue. Force eviction.
-            const auto desired = ControlBlock::Pack(
-                NodeState::kDead, RefBit::kCold, ver, length, offset
-            );
+            const auto desired =
+                ControlBlock::Pack(NodeState::kDead, RefBit::kCold, ver, length, offset);
             if (node.control_block.compare_exchange_strong(
-                    expected, desired, std::memory_order_release,
-                    std::memory_order_relaxed
+                    expected, desired, std::memory_order_release, std::memory_order_relaxed
                 )) {
                 read_tail_.fetch_add(total_len, std::memory_order_relaxed);
                 continue;
@@ -82,12 +76,8 @@ void Arena::GarbageCollection() noexcept {
         const auto rescued_offset = opt_offset.value();
         const auto rescued_index  = ActualIndex(rescued_offset);
 
-        const PayloadHeader rescued_header{
-            PayloadHeader::kValidIdentifier, nid, text_len
-        };
-        std::memcpy(
-            payload_buf_ + rescued_index, &rescued_header, sizeof(PayloadHeader)
-        );
+        const PayloadHeader rescued_header{PayloadHeader::kValidIdentifier, nid, text_len};
+        std::memcpy(payload_buf_ + rescued_index, &rescued_header, sizeof(PayloadHeader));
 
         auto src_idx = ActualIndex(tail + sizeof(PayloadHeader));
         auto dst_idx = ActualIndex(rescued_index + sizeof(PayloadHeader));
@@ -104,11 +94,9 @@ void Arena::GarbageCollection() noexcept {
             dst_idx = ActualIndex(dst_idx + chunk);
         }
 
-        const auto desired =
-            ControlBlock::Pack(state, RefBit::kCold, ver, length, offset);
+        const auto desired = ControlBlock::Pack(state, RefBit::kCold, ver, length, offset);
         if (node.control_block.compare_exchange_strong(
-                expected, desired, std::memory_order_release,
-                std::memory_order_relaxed
+                expected, desired, std::memory_order_release, std::memory_order_relaxed
             )) {
             read_tail_.fetch_add(total_len, std::memory_order_relaxed);
         }
