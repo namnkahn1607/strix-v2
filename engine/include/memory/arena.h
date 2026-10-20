@@ -44,6 +44,8 @@ private:
     // Returns the virtual offset at which caller can begin writing to.
     std::optional<std::uint64_t> TryAllocateSpace(std::uint32_t length) noexcept;
 
+    void SweepStalePending(TimePoint now) noexcept;
+
     Node*         nodes_;    // Node slot array
     float*        vectors_;  // Vector array
     std::uint8_t* payload_buf_;

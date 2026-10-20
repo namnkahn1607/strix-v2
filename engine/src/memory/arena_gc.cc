@@ -5,12 +5,23 @@
 #include <algorithm>
 #include <atomic>
 
+#include "memory/meta_node.h"
+#include "memory/state.h"
 #include "payload_header.h"
 
 namespace strix::memory {
 
 void Arena::GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept {
+    constexpr std::chrono::milliseconds kSweepInterval{5'000u};
+
+    auto last_sweep = Clock::now();
     while (!shutdown_req.load(std::memory_order_relaxed)) {
+        auto now = Clock::now();
+        if (now - last_sweep >= kSweepInterval) {
+            SweepStalePending(now);
+            last_sweep = now;
+        }
+
         const std::uint64_t tail = read_tail_.load(std::memory_order_relaxed);
 
         const auto tail_index = ActualIndex(tail);
@@ -102,6 +113,33 @@ void Arena::GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept {
             read_tail_.fetch_add(total_len, std::memory_order_relaxed);
         }
         // Should this CAS fail?
+    }
+}
+
+void Arena::SweepStalePending(TimePoint now) noexcept {
+    for (std::uint32_t node_id = 0; node_id < num_slots; ++node_id) {
+        auto& node = nodes_[node_id];
+
+        const std::uint64_t ctrl = node.control_block.load(std::memory_order_acquire);
+        const auto [state, ref, ver, length, offset] = ControlBlock::Unpack(ctrl);
+
+        if (state != NodeState::kPending) {
+            continue;
+        }
+
+        const auto ts = node.created_at.load(std::memory_order_acquire);
+        if (now - ts <= kPendingLifespan) {
+            continue;
+        }
+
+        auto       expected = ctrl;
+        const auto desired =
+            ControlBlock::Pack(NodeState::kDead, RefBit::kCold, ver, length, offset);
+        node.control_block.compare_exchange_strong(
+            expected, desired, std::memory_order_release, std::memory_order_relaxed
+        );
+        // CAS failed. A worker committed payload for this node and landed a
+        // PENDING -> READY publish.
     }
 }
 
