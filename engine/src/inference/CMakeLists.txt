@@ -6,5 +6,5 @@ set_target_properties(ONNXRuntime PROPERTIES
     INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${ORT_ROOT}/include")
 
 add_module(inference
-    SOURCES     encoder.cc
+    SOURCES     encoder.cpp
     DEPS_PUBLIC ONNXRuntime)

@@ -1,3 +1,3 @@
 add_module(memory
-    SOURCES arena.cc arena_gc.cc
+    SOURCES arena.cpp arena_gc.cpp
     DEPS_PRIVATE absl::cord engine_base engine_config)
