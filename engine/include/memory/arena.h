@@ -22,10 +22,10 @@ public:
     explicit Arena(config::ArenaOptions& opt);
     ~Arena();
 
-    Arena(const Arena&)           = delete;
-    Arena operator=(const Arena&) = delete;
-    Arena(Arena&&)                = delete;
-    Arena operator=(Arena&&)      = delete;
+    Arena(const Arena&)            = delete;
+    Arena& operator=(const Arena&) = delete;
+    Arena(Arena&&)                 = delete;
+    Arena& operator=(Arena&&)      = delete;
 
     std::optional<absl::Cord> ReadPayload(std::uint32_t nid) const noexcept;
 
