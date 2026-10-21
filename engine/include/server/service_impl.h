@@ -13,6 +13,9 @@ class CacheServiceImpl final : public strix::v1::CacheService::Service {
 public:
     explicit CacheServiceImpl(const inference::Encoder& encoder);
 
+    CacheServiceImpl(const CacheServiceImpl&)           = delete;
+    CacheServiceImpl operator=(const CacheServiceImpl&) = delete;
+
     grpc::Status CheckCache(
         grpc::ServerContext* context, const strix::v1::CheckCacheRequest* request,
         strix::v1::CheckCacheResponse* response
