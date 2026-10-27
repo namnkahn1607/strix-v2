@@ -8,6 +8,7 @@
 #include "allocator.h"
 #include "buffer_pool.h"
 #include "config/arena.h"
+#include "hazard_offset.h"
 #include "inference/vector.h"
 #include "memory/control_block.h"
 #include "memory/state.h"
@@ -15,8 +16,8 @@
 
 namespace strix::memory {
 
-Arena::Arena(config::ArenaOptions& opt)
-    : num_slots{opt.max_slots}, payload_buf_size{opt.payload_buf_size} {
+Arena::Arena(config::ArenaOptions& opt, std::size_t num_workers)
+    : num_slots{opt.max_slots}, payload_buf_size{opt.payload_buf_size}, hazard_table_{num_workers} {
     nodes_       = Alloc<Node>(num_slots);
     vectors_     = Alloc<float>(num_slots * inference::kVectorDim);
     payload_buf_ = Alloc<std::uint8_t>(payload_buf_size);

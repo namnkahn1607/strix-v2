@@ -10,6 +10,7 @@
 #include <optional>
 
 #include "config/arena.h"
+#include "hazard_offset.h"
 #include "meta_node.h"
 
 namespace strix::memory {
@@ -22,7 +23,7 @@ class Arena final {
 public:
     using NodeFreedCallback = std::function<void(std::uint32_t)>;
 
-    explicit Arena(config::ArenaOptions& opt);
+    explicit Arena(config::ArenaOptions& opt, std::size_t num_workers);
     ~Arena();
 
     Arena(const Arena&)            = delete;
@@ -60,6 +61,9 @@ private:
 
     // Callback hook invoked by the GC when a node is ready for reuse.
     NodeFreedCallback on_node_freed_;
+
+    // Managing table of published hazard zones.
+    HazardTable hazard_table_;
 
     std::unique_ptr<BufPool> buf_pool_;
 };
