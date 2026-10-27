@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 
@@ -19,6 +20,8 @@ class BufPool;
 // Thread-safe as each API has its own synchronization guarantees.
 class Arena final {
 public:
+    using NodeFreedCallback = std::function<void(std::uint32_t)>;
+
     explicit Arena(config::ArenaOptions& opt);
     ~Arena();
 
@@ -32,6 +35,8 @@ public:
     bool WritePayload(std::uint32_t nid, const std::uint8_t* in, std::uint32_t length) noexcept;
 
     void GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept;
+
+    void SetNodeFreedCallback(NodeFreedCallback cb) { on_node_freed_ = std::move(cb); }
 
     const std::uint32_t num_slots;
     const std::size_t   payload_buf_size;
@@ -52,6 +57,9 @@ private:
 
     std::atomic<std::uint64_t> write_head_{0};
     std::atomic<std::uint64_t> read_tail_{0};
+
+    // Callback hook invoked by the GC when a node is ready for reuse.
+    NodeFreedCallback on_node_freed_;
 
     std::unique_ptr<BufPool> buf_pool_;
 };

@@ -48,6 +48,7 @@ void Arena::GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept {
 
         if (state == NodeState::kDead) {
             read_tail_.fetch_add(total_len, std::memory_order_relaxed);
+            on_node_freed_(nid);
             continue;
         }
 
@@ -65,6 +66,7 @@ void Arena::GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept {
                     expected, desired, std::memory_order_release, std::memory_order_relaxed
                 )) {
                 read_tail_.fetch_add(total_len, std::memory_order_relaxed);
+                on_node_freed_(nid);
                 continue;
             }
             // Should this CAS fail?
@@ -80,6 +82,7 @@ void Arena::GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept {
                     expected, desired, std::memory_order_release, std::memory_order_relaxed
                 )) {
                 read_tail_.fetch_add(total_len, std::memory_order_relaxed);
+                on_node_freed_(nid);
                 continue;
             }
             // Again: should this CAS fail?
