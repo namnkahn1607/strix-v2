@@ -2,8 +2,10 @@
 
 #pragma once
 
-#include <array>
 #include <atomic>
+#include <cassert>
+#include <cstddef>
+#include <memory>
 #include <optional>
 
 #include "memory/control_block.h"
@@ -17,31 +19,42 @@ struct HazardRange {
     std::uint32_t length;
 };
 
-// `N` should equal the number of workers in gRPC thread pool.
-template <size_t N>
 class HazardTable final {
 public:
+    // Number of slots should equal the number of workers in gRPC thread pool.
+    explicit HazardTable(std::size_t n) : size_(n), slots_(std::make_unique<Slot[]>(n)) {}
+    ~HazardTable() = default;
+
+    HazardTable(const HazardTable&)            = delete;
+    HazardTable& operator=(const HazardTable&) = delete;
+    HazardTable(HazardTable&&)                 = delete;
+    HazardTable& operator=(HazardTable&&)      = delete;
+
     // Publishes a new "hazard zone" in payload buffer.
     void Publish(std::uint32_t wid, std::uint64_t offset, std::uint32_t length) noexcept {
+        assert(wid < size_);
         slots_[wid].value.store(Pack(offset, length), std::memory_order_release);
     }
 
     // Detaches an existing "hazard zone" in payload buffer.
     void Clear(std::uint32_t wid) noexcept {
+        assert(wid < size_);
         slots_[wid].value.store(0, std::memory_order_release);
     }
 
     // Checks if the specified range `[offset, offset + length)` intersects with
     // any published hazard zones.
     bool Overlaps(std::uint64_t offset, std::uint32_t length) const noexcept {
-        for (auto& s : slots_) {
-            auto h = Unpack(s.value.load(std::memory_order_acquire));
+        for (std::size_t i = 0; i < size_; ++i) {
+            auto h = Unpack(slots_[i].value.load(std::memory_order_acquire));
             if (h.has_value() && Intersect(offset, length, h.value().offset, h.value().length)) {
                 return true;
             }
         }
         return false;
     }
+
+    [[nodiscard]] std::size_t size() const noexcept { return size_; }
 
 private:
     // 8-byte representation of `HazardRange` in table.
@@ -78,7 +91,8 @@ private:
         return ao < bo + bl && bo < ao + al;
     }
 
-    std::array<Slot, N> slots_{};
+    std::size_t             size_;
+    std::unique_ptr<Slot[]> slots_;
 };
 
 }  // namespace strix::memory
