@@ -13,6 +13,7 @@
 #include "memory/control_block.h"
 #include "memory/state.h"
 #include "payload_header.h"
+#include "worker/identity.h"
 
 namespace strix::memory {
 
@@ -30,36 +31,79 @@ Arena::~Arena() {
     Dealloc<std::uint8_t>(payload_buf_, payload_buf_size);
 }
 
-std::optional<absl::Cord> Arena::ReadPayload(std::uint32_t nid) const noexcept {
-    auto& node = nodes_[nid];
-    auto  ctrl = node.control_block.load(std::memory_order_acquire);
+std::optional<absl::Cord> Arena::ReadPayload(
+    std::uint32_t nid, std::uint8_t exp_ver, TimePoint now
+) noexcept {
+    const auto slot = worker::ThreadID();
+    auto&      node = nodes_[nid];
 
-    auto [state, ref, ver, length, offset] = ControlBlock::Unpack(ctrl);
-    if (state != NodeState::kReady) {
+    std::uint64_t ctrl;
+    ControlBlock  cb;
+
+    // Tolerate ONCE against payload rescuing.
+    constexpr std::uint32_t kMaxReadAttempts = 2;
+
+    std::uint32_t attempt = 1;
+    while (true) {
+        ctrl = node.control_block.load(std::memory_order_acquire);
+        cb   = ControlBlock::Unpack(ctrl);
+
+        if (cb.ver != exp_ver || cb.state == NodeState::kDead) return std::nullopt;
+        if (cb.state == NodeState::kPending) {
+            const auto ts = node.created_at.load(std::memory_order_acquire);
+            if (now - ts > kPendingLifespan) return std::nullopt;
+        }
+
+        hazard_table_.Publish(slot, cb.offset, cb.length);
+
+        const auto cb2 = node.Load();
+        if (cb2.state == NodeState::kReady && cb2.ver == cb.ver) {
+            // Stable virtual offset confirmed. Proceed reading.
+            if (cb2.offset == cb.offset) break;
+
+            // Offset mismatched - likely caused by payload rescuing. Retry.
+            hazard_table_.Clear(slot);
+            if (++attempt > kMaxReadAttempts) {
+                return std::nullopt;
+            }
+            continue;
+        }
+
+        hazard_table_.Clear(slot);
         return std::nullopt;
     }
 
     std::uint32_t pool_id;
     std::uint8_t* dst = buf_pool_->Acquire(&pool_id);
     if (dst == nullptr) {
+        hazard_table_.Clear(slot);
         return std::nullopt;
     }
 
-    const auto text_index = ActualIndex(offset);
-    if (payload_buf_size - text_index >= length) {
-        std::memcpy(dst, payload_buf_ + text_index, length);
+    const auto text_index = ActualIndex(cb.offset);
+    if (payload_buf_size - text_index >= cb.length) {
+        std::memcpy(dst, payload_buf_ + text_index, cb.length);
     } else {
         const auto chunk1 = payload_buf_size - text_index;
-        const auto chunk2 = length - chunk1;
+        const auto chunk2 = cb.length - chunk1;
         std::memcpy(dst, payload_buf_ + text_index, chunk1);
         std::memcpy(dst + chunk1, payload_buf_, chunk2);
     }
 
-    // What if node being evicted mid-read?
-    auto res = buf_pool_->Wrap(dst, pool_id, length);
+    hazard_table_.Clear(slot);
+    auto res = buf_pool_->Wrap(dst, pool_id, cb.length);
+
+    if (exp_ver != node.LoadVersion()) {
+        // Node was evicted mid-read. Unreliable payload bytes read.
+        // Drop the wrapped Cord immediately.
+        return std::nullopt;
+    }
 
     auto       expected = ctrl;
-    const auto desired  = ControlBlock::Pack(NodeState::kReady, RefBit::kHot, ver, length, offset);
+    const auto desired =
+        ControlBlock::Pack(NodeState::kReady, RefBit::kHot, cb.ver, cb.length, cb.offset);
+    // Might fail due to 2 cases: another reader promoted this node OR
+    // the payload itself has been rescued by GC.
     node.control_block.compare_exchange_strong(
         expected, desired, std::memory_order_release, std::memory_order_relaxed
     );

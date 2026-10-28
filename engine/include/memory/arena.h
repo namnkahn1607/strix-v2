@@ -31,7 +31,9 @@ public:
     Arena(Arena&&)                 = delete;
     Arena& operator=(Arena&&)      = delete;
 
-    std::optional<absl::Cord> ReadPayload(std::uint32_t nid) const noexcept;
+    std::optional<absl::Cord> ReadPayload(
+        std::uint32_t nid, std::uint8_t exp_ver, TimePoint now
+    ) noexcept;
 
     bool WritePayload(std::uint32_t nid, const std::uint8_t* in, std::uint32_t length) noexcept;
 

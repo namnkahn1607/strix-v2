@@ -23,6 +23,14 @@ struct alignas(64) Node {
     ControlBlock Load(std::memory_order order = std::memory_order_acquire) const noexcept {
         return ControlBlock::Unpack(control_block.load(order));
     }
+
+    // Extracts only the version field.
+    // Used on both sides of a seqlock-style version check.
+    std::uint8_t LoadVersion(std::memory_order order = std::memory_order_acquire) const noexcept {
+        return static_cast<std::uint8_t>(
+            (control_block.load(order) >> kVersionShift) & kVersionMask
+        );
+    }
 };
 
 }  // namespace strix::memory
