@@ -23,6 +23,7 @@
 #include "config/options.h"
 #include "inference/encoder.h"
 #include "server/service_impl.h"
+#include "worker/identity.h"
 
 using namespace strix;
 
@@ -207,6 +208,7 @@ int main() {
 
         grpc::EnableDefaultHealthCheckService(true);  // Process-global
 
+        worker::Init(opts.Grpc().num_threads);
         inference::Encoder        encoder{tok_path.c_str(), bert_path.c_str()};
         service::CacheServiceImpl cache_svc{encoder};
 
