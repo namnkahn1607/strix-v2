@@ -2,9 +2,12 @@
 #include "memory/arena.h"
 // clang-format on
 
+#include <absl/log/check.h>
+
 #include <algorithm>
 #include <atomic>
 
+#include "memory/control_block.h"
 #include "memory/meta_node.h"
 #include "memory/state.h"
 #include "payload_header.h"
@@ -22,39 +25,41 @@ void Arena::GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept {
             last_sweep = now;
         }
 
-        const std::uint64_t tail = read_tail_.load(std::memory_order_relaxed);
+        const auto tail = read_tail_.load(std::memory_order_relaxed);
 
         const auto tail_index = ActualIndex(tail);
         if (const auto padding = payload_buf_size - tail_index; padding < sizeof(PayloadHeader)) {
             read_tail_.fetch_add(padding, std::memory_order_relaxed);
+            continue;
         }
 
-        const auto* header = reinterpret_cast<const PayloadHeader*>(payload_buf_ + tail_index);
-        if (header->identifier != PayloadHeader::kValidIdentifier) {
-            // Reading an invalid PayloadHeader.
-            // Reluctantly advance by 1 byte and retry.
+        const auto [identifier, nid, text_len] =
+            *reinterpret_cast<const PayloadHeader*>(payload_buf_ + tail_index);
+        if (identifier != PayloadHeader::kValidIdentifier) {
+            // Reading an invalid PayloadHeader. Advance by 1 byte and retry.
             read_tail_.fetch_add(1, std::memory_order_relaxed);
             continue;
         }
 
-        const auto nid       = header->node_id;
-        const auto text_len  = header->length;
-        const auto total_len = sizeof(PayloadHeader) + text_len;
+        const std::uint32_t total_len = sizeof(PayloadHeader) + text_len;
 
-        auto& node = nodes_[nid];
+        auto& node     = nodes_[nid];
+        auto  expected = node.control_block.load(std::memory_order_acquire);
+        const auto [state, ref, ver, length, offset] = ControlBlock::Unpack(expected);
 
-        const auto [state, ref, ver, length, offset] = node.Load();
-        auto expected = ControlBlock::Pack(state, ref, ver, length, offset);
+        if (offset != (tail & kVirtualOffsetMask)) {
+            // Virtual offset no longer matches its position in buffer.
+            TryReclaimSpace(nid, tail, total_len, false);
+            continue;
+        }
 
         if (state == NodeState::kDead) {
-            read_tail_.fetch_add(total_len, std::memory_order_relaxed);
-            on_node_freed_(nid);
+            TryReclaimSpace(nid, tail, total_len, true);
             continue;
         }
 
         if (state == NodeState::kPending) {
-            // New payload for this node will be committed at write_head_, not
-            // at this position.
+            // New payload for this node will be committed at write_head_, not this position.
             read_tail_.fetch_add(total_len, std::memory_order_relaxed);
             continue;
         }
@@ -64,11 +69,11 @@ void Arena::GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept {
             const auto desired = ControlBlock::Pack(NodeState::kDead, ref, ver, length, offset);
             if (node.control_block.compare_exchange_strong(
                     expected, desired, std::memory_order_release, std::memory_order_relaxed)) {
-                read_tail_.fetch_add(total_len, std::memory_order_relaxed);
-                on_node_freed_(nid);
+                TryReclaimSpace(nid, tail, total_len, true);
                 continue;
             }
-            // Should this CAS fail?
+            // CAS failed. A READ worker promoted this node from COLD -> HOT.
+            // Fallthrough the HOT case below.
         }
 
         // Hot node: grant Second Chance while cooling its reference bit.
@@ -77,15 +82,19 @@ void Arena::GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept {
             // No room to rescue. Force eviction.
             const auto desired =
                 ControlBlock::Pack(NodeState::kDead, RefBit::kCold, ver, length, offset);
-            if (node.control_block.compare_exchange_strong(
-                    expected, desired, std::memory_order_release, std::memory_order_relaxed)) {
-                read_tail_.fetch_add(total_len, std::memory_order_relaxed);
-                on_node_freed_(nid);
-                continue;
-            }
-            // Again: should this CAS fail?
+
+            // This CAS can't fail. Once the node is READY, only the GC can change its
+            // state/ref-bit. Eviction hasn't happened for an aquisition to make changes
+            // to version, length and virtual offset. [*]
+            CHECK(node.control_block.compare_exchange_strong(
+                expected, desired, std::memory_order_release, std::memory_order_relaxed))
+                << "Force-evict CAS shouldn't fail. Check concurrency invariants.";
+            TryReclaimSpace(nid, tail, total_len, true);
+            continue;
         }
 
+        // Payload rescue: copy bytes to a new position, cool the reference bit, and
+        // update new virtual offset.
         const auto rescued_offset = opt_offset.value();
         const auto rescued_index  = ActualIndex(rescued_offset);
 
@@ -108,38 +117,44 @@ void Arena::GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept {
         }
 
         const auto desired = ControlBlock::Pack(state, RefBit::kCold, ver, length, offset);
-        if (node.control_block.compare_exchange_strong(
-                expected, desired, std::memory_order_release, std::memory_order_relaxed)) {
-            read_tail_.fetch_add(total_len, std::memory_order_relaxed);
-        }
-        // Should this CAS fail?
+
+        // This CAS shouldn't fail for the same reasons as [*].
+        CHECK(node.control_block.compare_exchange_strong(
+            expected, desired, std::memory_order_release, std::memory_order_relaxed))
+            << "Rescue CAS shouldn't fail. Check concurrency invariants.";
+        TryReclaimSpace(nid, tail, total_len, false);
+        continue;
     }
 }
 
 void Arena::SweepStalePending(TimePoint now) noexcept {
-    for (std::uint32_t node_id = 0; node_id < num_slots; ++node_id) {
-        auto& node = nodes_[node_id];
+    for (std::uint32_t nid = 0; nid < num_slots; ++nid) {
+        auto& node = nodes_[nid];
 
-        const std::uint64_t ctrl = node.control_block.load(std::memory_order_acquire);
-        const auto [state, ref, ver, length, offset] = ControlBlock::Unpack(ctrl);
+        auto expected = node.control_block.load(std::memory_order_acquire);
+        const auto [state, ref, ver, length, offset] = ControlBlock::Unpack(expected);
 
-        if (state != NodeState::kPending) {
-            continue;
-        }
+        if (state != NodeState::kPending) continue;
 
         const auto ts = node.created_at.load(std::memory_order_acquire);
-        if (now - ts <= kPendingLifespan) {
-            continue;
-        }
+        if (now - ts <= kPendingLifespan) continue;
 
-        auto       expected = ctrl;
         const auto desired =
             ControlBlock::Pack(NodeState::kDead, RefBit::kCold, ver, length, offset);
-        node.control_block.compare_exchange_strong(
-            expected, desired, std::memory_order_release, std::memory_order_relaxed);
+        if (node.control_block.compare_exchange_strong(
+                expected, desired, std::memory_order_release, std::memory_order_relaxed)) {
+            on_node_freed_(nid);
+        }
         // CAS failed. A worker committed payload for this node and landed a
         // PENDING -> READY publish.
     }
+}
+
+void Arena::TryReclaimSpace(
+    std::uint32_t nid, std::uint64_t tail, std::uint32_t total_len, bool free) noexcept {
+    if (hazard_table_.Overlaps(tail, total_len)) return;
+    if (free) on_node_freed_(nid);
+    read_tail_.fetch_add(total_len, std::memory_order_relaxed);
 }
 
 }  // namespace strix::memory

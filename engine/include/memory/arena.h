@@ -51,6 +51,10 @@ private:
     // Returns the virtual offset at which caller can begin writing to.
     std::optional<std::uint64_t> TryAllocateSpace(std::uint32_t length) noexcept;
 
+    // Node is released back to free-list upon `free = true`.
+    void TryReclaimSpace(
+        std::uint32_t nid, std::uint64_t tail, std::uint32_t total_len, bool free) noexcept;
+
     void SweepStalePending(TimePoint now) noexcept;
 
     Node*         nodes_;    // Node slot array
