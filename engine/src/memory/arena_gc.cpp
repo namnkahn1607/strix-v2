@@ -63,8 +63,7 @@ void Arena::GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept {
             // Cold node: evict immeditately.
             const auto desired = ControlBlock::Pack(NodeState::kDead, ref, ver, length, offset);
             if (node.control_block.compare_exchange_strong(
-                    expected, desired, std::memory_order_release, std::memory_order_relaxed
-                )) {
+                    expected, desired, std::memory_order_release, std::memory_order_relaxed)) {
                 read_tail_.fetch_add(total_len, std::memory_order_relaxed);
                 on_node_freed_(nid);
                 continue;
@@ -79,8 +78,7 @@ void Arena::GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept {
             const auto desired =
                 ControlBlock::Pack(NodeState::kDead, RefBit::kCold, ver, length, offset);
             if (node.control_block.compare_exchange_strong(
-                    expected, desired, std::memory_order_release, std::memory_order_relaxed
-                )) {
+                    expected, desired, std::memory_order_release, std::memory_order_relaxed)) {
                 read_tail_.fetch_add(total_len, std::memory_order_relaxed);
                 on_node_freed_(nid);
                 continue;
@@ -111,8 +109,7 @@ void Arena::GarbageCollection(const std::atomic<bool>& shutdown_req) noexcept {
 
         const auto desired = ControlBlock::Pack(state, RefBit::kCold, ver, length, offset);
         if (node.control_block.compare_exchange_strong(
-                expected, desired, std::memory_order_release, std::memory_order_relaxed
-            )) {
+                expected, desired, std::memory_order_release, std::memory_order_relaxed)) {
             read_tail_.fetch_add(total_len, std::memory_order_relaxed);
         }
         // Should this CAS fail?
@@ -139,8 +136,7 @@ void Arena::SweepStalePending(TimePoint now) noexcept {
         const auto desired =
             ControlBlock::Pack(NodeState::kDead, RefBit::kCold, ver, length, offset);
         node.control_block.compare_exchange_strong(
-            expected, desired, std::memory_order_release, std::memory_order_relaxed
-        );
+            expected, desired, std::memory_order_release, std::memory_order_relaxed);
         // CAS failed. A worker committed payload for this node and landed a
         // PENDING -> READY publish.
     }

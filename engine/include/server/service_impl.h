@@ -16,15 +16,12 @@ public:
     CacheServiceImpl(const CacheServiceImpl&)           = delete;
     CacheServiceImpl operator=(const CacheServiceImpl&) = delete;
 
-    grpc::Status CheckCache(
-        grpc::ServerContext* context, const strix::v1::CheckCacheRequest* request,
-        strix::v1::CheckCacheResponse* response
-    ) override;
+    grpc::Status CheckCache(grpc::ServerContext* context,
+        const strix::v1::CheckCacheRequest*      request,
+        strix::v1::CheckCacheResponse*           response) override;
 
-    grpc::Status SetCache(
-        grpc::ServerContext* context, const strix::v1::SetCacheRequest* request,
-        strix::v1::SetCacheResponse* response
-    ) override;
+    grpc::Status SetCache(grpc::ServerContext* context, const strix::v1::SetCacheRequest* request,
+        strix::v1::SetCacheResponse* response) override;
 
 private:
     const inference::Encoder& encoder_;

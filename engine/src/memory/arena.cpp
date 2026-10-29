@@ -32,8 +32,7 @@ Arena::~Arena() {
 }
 
 std::optional<absl::Cord> Arena::ReadPayload(
-    std::uint32_t nid, std::uint8_t exp_ver, TimePoint now
-) noexcept {
+    std::uint32_t nid, std::uint8_t exp_ver, TimePoint now) noexcept {
     const auto slot = worker::ThreadID();
     auto&      node = nodes_[nid];
 
@@ -105,8 +104,7 @@ std::optional<absl::Cord> Arena::ReadPayload(
     // Might fail due to 2 cases: another reader promoted this node OR
     // the payload itself has been rescued by GC.
     node.control_block.compare_exchange_strong(
-        expected, desired, std::memory_order_release, std::memory_order_relaxed
-    );
+        expected, desired, std::memory_order_release, std::memory_order_relaxed);
 
     return res;
 }

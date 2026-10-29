@@ -46,8 +46,7 @@ public:
     absl::Cord Wrap(std::uint8_t* buf, std::uint32_t id, std::uint32_t length) noexcept {
         return absl::MakeCordFromExternal(
             absl::string_view{reinterpret_cast<const char*>(buf), length},
-            [this, id]() noexcept { this->stack_.Push(id); }
-        );
+            [this, id]() noexcept { this->stack_.Push(id); });
     }
 
 private:

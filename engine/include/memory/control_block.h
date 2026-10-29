@@ -41,9 +41,8 @@ struct ControlBlock {
     std::uint32_t length;  // Payload length in bytes (max 2 MiB - 1 byte).
     std::uint64_t offset;  // Virtual buffer offset (max 64 GiB).
 
-    static std::uint64_t Pack(
-        NodeState state, RefBit ref, std::uint8_t ver, std::uint32_t length, std::uint64_t offset
-    ) noexcept {
+    static std::uint64_t Pack(NodeState state, RefBit ref, std::uint8_t ver, std::uint32_t length,
+        std::uint64_t offset) noexcept {
         auto state64 = static_cast<uint64_t>(state);
         auto ref64   = static_cast<uint64_t>(ref);
         auto ver64   = static_cast<uint64_t>(ver);
@@ -54,13 +53,11 @@ struct ControlBlock {
     }
 
     static ControlBlock Unpack(std::uint64_t ctrl) noexcept {
-        return {
-            static_cast<NodeState>((ctrl >> kNodeStateShift) & kNodeStateMask),
+        return {static_cast<NodeState>((ctrl >> kNodeStateShift) & kNodeStateMask),
             static_cast<RefBit>((ctrl >> kRefBitShift) & kRefBitMask),
             static_cast<std::uint8_t>((ctrl >> kVersionShift) & kVersionMask),
             static_cast<std::uint32_t>((ctrl >> kLengthShift) & kMaxPayloadLength),
-            ctrl & kVirtualOffsetMask
-        };
+            ctrl & kVirtualOffsetMask};
     }
 };
 
@@ -68,11 +65,10 @@ static_assert(kRefBitShift + 1 == kNodeStateShift, "ref bit after state");
 static_assert(kVersionShift + 4 == kRefBitShift, "4-bit ver after ref bit");
 static_assert(kLengthShift + 21 == kVersionShift, "21-bit length after ver");
 static_assert(kLengthShift == 36, "36-bit offset at last");
-static_assert(
-    ((kNodeStateMask << kNodeStateShift) | (kRefBitMask << kRefBitShift) |
-     (kVersionMask << kVersionShift) |
-     (static_cast<std::uint64_t>(kMaxPayloadLength) << kLengthShift) | kVirtualOffsetMask) == ~0ull,
-    "All fields form an exact 64-bit partition"
-);
+static_assert(((kNodeStateMask << kNodeStateShift) | (kRefBitMask << kRefBitShift) |
+                  (kVersionMask << kVersionShift) |
+                  (static_cast<std::uint64_t>(kMaxPayloadLength) << kLengthShift) |
+                  kVirtualOffsetMask) == ~0ull,
+    "All fields form an exact 64-bit partition");
 
 }  // namespace strix::memory

@@ -3,7 +3,7 @@ BasedOnStyle: Google
 ColumnLimit: 100
 
 AccessModifierOffset: -4
-AlignAfterOpenBracket: BlockIndent
+AlignAfterOpenBracket: false
 AlignConsecutiveAssignments:
   Enabled: true
   AcrossComments: false

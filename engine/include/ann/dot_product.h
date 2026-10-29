@@ -72,9 +72,8 @@ __attribute__((target("avx2,fma"))) void BatchDotProduct(
 }
 // clang-format on
 
-__attribute__((target("avx2,fma"))) void BatchDotProduct(
-    const float* __restrict query, const float* __restrict batch, float* __restrict scores
-) noexcept {
+__attribute__((target("avx2,fma"))) void BatchDotProduct(const float* __restrict query,
+    const float* __restrict batch, float* __restrict scores) noexcept {
     const float* __restrict v0 = batch;
     const float* __restrict v1 = v0 + inference::kVectorDim;
     const float* __restrict v2 = v1 + inference::kVectorDim;
@@ -87,9 +86,8 @@ __attribute__((target("avx2,fma"))) void BatchDotProduct(
 #else
 namespace strix::ann {
 
-inline void BatchDotProduct(
-    const float* __restrict query, const float* __restrict batch, float* __restrict scores
-) noexcept {
+inline void BatchDotProduct(const float* __restrict query, const float* __restrict batch,
+    float* __restrict scores) noexcept {
     for (size_t k = 0; k < kBatchSize; ++k) {
         float dot = 0.0f;
         for (size_t i = 0; i < inference::kVectorDim; ++i) {
@@ -99,10 +97,9 @@ inline void BatchDotProduct(
     }
 }
 
-inline void BatchDotProduct(
-    const float* __restrict query, const float* __restrict v0, const float* __restrict v1,
-    const float* __restrict v2, const float* __restrict v3, float* __restrict scores
-) noexcept {
+inline void BatchDotProduct(const float* __restrict query, const float* __restrict v0,
+    const float* __restrict v1, const float* __restrict v2, const float* __restrict v3,
+    float* __restrict scores) noexcept {
     const float* __restrict batch[kBatchSize]{v0, v1, v2, v3};
     BatchDotProduct(query, batch, scores);
 }

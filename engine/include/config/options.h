@@ -29,10 +29,8 @@ public:
     Seconds ShutdownTimeout() const noexcept { return shutdown_timeout_; }
 
 private:
-    explicit Options(
-        ArenaOptions arena, GrpcOptions grpc, IvfOptions ivf, CalibrationOptions calibration,
-        SearchOptions search, Seconds shutdown_timeout
-    );
+    explicit Options(ArenaOptions arena, GrpcOptions grpc, IvfOptions ivf,
+        CalibrationOptions calibration, SearchOptions search, Seconds shutdown_timeout);
 
     void Validate() const;
 

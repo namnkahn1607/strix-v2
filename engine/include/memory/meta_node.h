@@ -28,8 +28,7 @@ struct alignas(64) Node {
     // Used on both sides of a seqlock-style version check.
     std::uint8_t LoadVersion(std::memory_order order = std::memory_order_acquire) const noexcept {
         return static_cast<std::uint8_t>(
-            (control_block.load(order) >> kVersionShift) & kVersionMask
-        );
+            (control_block.load(order) >> kVersionShift) & kVersionMask);
     }
 };
 

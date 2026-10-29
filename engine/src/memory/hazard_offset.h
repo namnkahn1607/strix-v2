@@ -78,16 +78,13 @@ private:
         if ((word >> kHazardActiveShift) == 0) {
             return std::nullopt;
         }
-        return HazardRange{
-            /*offset=*/word & kVirtualOffsetMask,
-            /*length=*/static_cast<uint32_t>((word >> kHazardLengthShift) & kHazardLengthMask)
-        };
+        return HazardRange{/*offset=*/word & kVirtualOffsetMask,
+            /*length=*/static_cast<uint32_t>((word >> kHazardLengthShift) & kHazardLengthMask)};
     }
 
     // Checks if 2 ranges `[ao, ao + al)` and `[bo, bo + bl)` intersect.
     static bool Intersect(
-        std::uint64_t ao, std::uint32_t al, std::uint64_t bo, std::uint32_t bl
-    ) noexcept {
+        std::uint64_t ao, std::uint32_t al, std::uint64_t bo, std::uint32_t bl) noexcept {
         return ao < bo + bl && bo < ao + al;
     }
 

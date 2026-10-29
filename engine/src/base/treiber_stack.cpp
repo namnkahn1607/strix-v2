@@ -26,8 +26,7 @@ void TreiberStack::Push(std::uint32_t id) noexcept {
         next_[id] = old_head.head_id;
         new_head  = {id, old_head.tag + 1};
     } while (!head_.compare_exchange_weak(
-        old_head, new_head, std::memory_order_release, std::memory_order_relaxed
-    ));
+        old_head, new_head, std::memory_order_release, std::memory_order_relaxed));
 }
 
 std::uint32_t TreiberStack::Pop() noexcept {
@@ -42,8 +41,7 @@ std::uint32_t TreiberStack::Pop() noexcept {
         const TaggedHead    new_head{next_id, old_head.head_id + 1};
 
         if (head_.compare_exchange_weak(
-                old_head, new_head, std::memory_order_acquire, std::memory_order_acquire
-            )) {
+                old_head, new_head, std::memory_order_acquire, std::memory_order_acquire)) {
             return old_head.head_id;
         }
     }

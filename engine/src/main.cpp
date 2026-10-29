@@ -78,11 +78,9 @@ struct Env {
     int         pipe_fd;
 
     static Env Load() {
-        return Env{
-            .tok_path  = RequireEnv("TOKENIZER_PATH"),
-            .bert_path = RequireEnv("TRANSFORMER_PATH"),
-            .pipe_fd   = ParseFd("PARENT_PIPE_FD")
-        };
+        return Env{.tok_path = RequireEnv("TOKENIZER_PATH"),
+            .bert_path       = RequireEnv("TRANSFORMER_PATH"),
+            .pipe_fd         = ParseFd("PARENT_PIPE_FD")};
     }
 };
 
@@ -160,8 +158,7 @@ Stop WaitForStop(int sig_fd, int pipe_fd) {
 }
 
 Stop Run(
-    service::CacheServiceImpl& cache_svc, const config::Options& opt, int sig_fd, int pipe_fd
-) {
+    service::CacheServiceImpl& cache_svc, const config::Options& opt, int sig_fd, int pipe_fd) {
     grpc::ServerBuilder builder;
     Configure(builder, opt.Grpc());
     builder.RegisterService(&cache_svc);
