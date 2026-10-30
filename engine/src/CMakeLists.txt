@@ -4,6 +4,7 @@ add_subdirectory(inference)
 add_subdirectory(worker)
 add_subdirectory(memory)
 add_subdirectory(ann)
+add_subdirectory(catalog)
 add_subdirectory(server)
 
 add_executable(strix_engine main.cpp)
