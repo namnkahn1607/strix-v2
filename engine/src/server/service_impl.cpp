@@ -1,6 +1,5 @@
 #include "server/service_impl.h"
 
-#include "cache.pb.h"
 #include "inference/encoder.h"
 #include "inference/vector.h"
 

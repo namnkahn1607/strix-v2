@@ -1,7 +1,5 @@
 #include "inference/encoder.h"
 
-#include <onnxruntime_cxx_api.h>
-
 #include <array>
 #include <cmath>
 #include <cstddef>

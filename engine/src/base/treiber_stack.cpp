@@ -1,7 +1,5 @@
 #include "base/treiber_stack.h"
 
-#include <cstdint>
-
 namespace strix {
 
 TreiberStack::TreiberStack(std::uint32_t capacity) {

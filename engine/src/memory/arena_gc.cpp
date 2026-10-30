@@ -5,7 +5,6 @@
 #include <absl/log/check.h>
 
 #include <algorithm>
-#include <atomic>
 
 #include "memory/control_block.h"
 #include "memory/meta_node.h"
