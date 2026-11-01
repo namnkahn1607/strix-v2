@@ -73,7 +73,7 @@ class Manifest:
     local_name: str
 
     @property
-    def raw_text(self) -> str:
+    def raw_ext(self) -> str:
         """Original dataset extension on HuggingFace"""
         return Path(self.file_path).suffix
 
@@ -113,3 +113,8 @@ def load_manifest(info_toml: Path) -> Manifest:
         )
 
     return Manifest(repo_id=repo_id, revision=revision, file_path=file_path, local_name=local_name)
+
+
+def raw_dataset_path(manifest: Manifest) -> Path:
+    """Default raw dataset path resolver."""
+    return default_cache_dir() / f"{manifest.local_name}{manifest.raw_ext}"
