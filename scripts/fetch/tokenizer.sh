@@ -39,4 +39,4 @@ cat << 'EOF' > "$CONFIG_FILE"
 {"model_type": "bert"}
 EOF
 
-log "Done"
+log "Done. Saved to $MODEL_DIR"
