@@ -21,7 +21,7 @@ from pathlib import Path
 
 from _common import assert_in_venv, load_manifest, raw_dataset_path
 
-assert_in_venv()  # Use third-party library 
+assert_in_venv()  # Use third-party library
 
 from huggingface_hub import hf_hub_download
 
