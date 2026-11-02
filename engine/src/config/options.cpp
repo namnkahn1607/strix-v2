@@ -4,6 +4,7 @@
 #include <charconv>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <initializer_list>
 #include <limits>
 #include <optional>
@@ -173,13 +174,16 @@ Seconds GetDuration(
 }  // namespace
 
 Options::Options(ArenaOptions arena, GrpcOptions grpc, IvfOptions ivf,
-    CalibrationOptions calibration, SearchOptions search, Seconds shutdown_timeout)
+    CalibrationOptions calibration, SearchOptions search, Seconds shutdown_timeout,
+    std::string tok_path, std::string bert_path)
     : arena_{arena}
     , grpc_{std::move(grpc)}
     , ivf_{ivf}
     , calibration_{calibration}
     , search_{search}
-    , shutdown_timeout_{shutdown_timeout} {}
+    , shutdown_timeout_{shutdown_timeout}
+    , tok_path_{std::move(tok_path)}
+    , bert_path_{std::move(bert_path)} {}
 
 Options Options::FromJson(const nlohmann::json& j) {
     if (!j.is_object()) Fail("", "must be a mapping");
@@ -191,7 +195,8 @@ Options Options::FromJson(const nlohmann::json& j) {
     CalibrationOptions calib{};
     SearchOptions      search{};
 
-    Seconds shutdown_timeout;
+    Seconds     shutdown_timeout;
+    std::string model_dir;
 
     // --- ipc ---
     const json& ipc = GetSection(j, "", "ipc");
@@ -202,10 +207,16 @@ Options Options::FromJson(const nlohmann::json& j) {
     // --- engine ---
     const json& engine = GetSection(j, "", "engine");
     RejectUnknownKeys(engine, "engine",
-        {"shutdown_timeout", "rpc_server", "ivf", "calibration", "search", "storage"});
+        {"shutdown_timeout", "model_directory", "rpc_server", "ivf", "calibration", "search",
+            "storage"});
 
     shutdown_timeout =
         GetDuration(engine, "engine", "shutdown_timeout", defaults::kShutdownTimeout);
+
+    model_dir = GetNonEmptyString(engine, "engine", "model_directory", "");
+    if (model_dir.empty()) {
+        Fail("engine.model_directory", "is required");
+    }
 
     // --- engine.rpc_server ---
     const json& rpc = GetSection(engine, "engine", "rpc_server");
@@ -264,12 +275,21 @@ Options Options::FromJson(const nlohmann::json& j) {
     arena.buf_pool_cap = GetPositive<std::uint32_t>(
         storage_j, "engine.storage", "buffer_pool_capacity", defaults::kBufferPoolCapacity);
 
-    Options opts{arena, std::move(grpc), ivf, calib, search, shutdown_timeout};
+    const auto tok_path  = (std::filesystem::path(model_dir) / "tokenizer.onnx").string();
+    const auto bert_path = (std::filesystem::path(model_dir) / "transformer.onnx").string();
+
+    Options opts{arena, std::move(grpc), ivf, calib, search, shutdown_timeout, tok_path, bert_path};
     opts.Validate();
     return opts;
 }
 
 void Options::Validate() const {
+    if (!std::filesystem::exists(tok_path_)) {
+        Fail("engine.model_directory", "missing tokenizer artifact: " + tok_path_);
+    }
+    if (!std::filesystem::exists(bert_path_)) {
+        Fail("engine.model_directory", "missing transformer artifact: " + bert_path_);
+    }
     if (!(calibration_.min_convergence > 0.0) || !std::isfinite(calibration_.min_convergence)) {
         Fail("engine.calibration.min_convergence", "must be a finite number > 0");
     }

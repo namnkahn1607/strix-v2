@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <nlohmann/json.hpp>
+#include <string>
 
 #include "arena.h"
 #include "calibration.h"
@@ -28,9 +29,13 @@ public:
 
     Seconds ShutdownTimeout() const noexcept { return shutdown_timeout_; }
 
+    const std::string& TokenizerPath() const noexcept { return tok_path_; }
+    const std::string& TransformerPath() const noexcept { return bert_path_; }
+
 private:
     explicit Options(ArenaOptions arena, GrpcOptions grpc, IvfOptions ivf,
-        CalibrationOptions calibration, SearchOptions search, Seconds shutdown_timeout);
+        CalibrationOptions calibration, SearchOptions search, Seconds shutdown_timeout,
+        std::string tok_path, std::string bert_path);
 
     void Validate() const;
 
@@ -41,6 +46,9 @@ private:
     SearchOptions      search_;
 
     Seconds shutdown_timeout_;
+
+    std::string tok_path_;
+    std::string bert_path_;
 };
 
 }  // namespace strix::config

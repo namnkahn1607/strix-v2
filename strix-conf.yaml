@@ -21,6 +21,7 @@ gateway:
 
 engine:
   shutdown_timeout: 3s
+  model_directory: model/all-MiniLM-L6-v2   # REQUIRED
   rpc_server:
     worker_pool_size: 3         # REQUIRED
   ivf:

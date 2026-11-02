@@ -70,6 +70,10 @@ func (o *Options) validate() error {
 		)
 	}
 
+	if o.Engine.ModelDirectory == "" {
+		return errors.New("invalid config: engine.model_directory is not set")
+	}
+
 	if o.Gateway.Http.MaxReaderSize <= 0 {
 		return errors.New("invalid config: gateway.http.max_reader_size is not set")
 	}

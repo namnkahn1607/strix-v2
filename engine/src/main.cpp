@@ -73,15 +73,9 @@ int ParseFd(const std::string& s) {
 }
 
 struct Env {
-    std::string tok_path;
-    std::string bert_path;
-    int         pipe_fd;
+    int pipe_fd;
 
-    static Env Load() {
-        return Env{.tok_path = RequireEnv("TOKENIZER_PATH"),
-            .bert_path       = RequireEnv("TRANSFORMER_PATH"),
-            .pipe_fd         = ParseFd("PARENT_PIPE_FD")};
-    }
+    static Env Load() { return Env{.pipe_fd = ParseFd(RequireEnv("PARENT_PIPE_FD"))}; }
 };
 
 UniqueFd BlockSignalAndOpenFd() {
@@ -198,15 +192,15 @@ int main() {
     try {
         const UniqueFd sig_fd = BlockSignalAndOpenFd();
 
-        const auto [tok_path, bert_path, pipe_fd] = Env::Load();
-        const UniqueFd parent_pipe{pipe_fd};
+        const auto     env = Env::Load();
+        const UniqueFd parent_pipe{env.pipe_fd};
 
         const auto opts = config::Options::FromJson(ReadConfig(parent_pipe.Get()));
 
         grpc::EnableDefaultHealthCheckService(true);  // Process-global
 
         worker::Init(opts.Grpc().num_threads);
-        inference::Encoder        encoder{tok_path.c_str(), bert_path.c_str()};
+        inference::Encoder encoder{opts.TokenizerPath().c_str(), opts.TransformerPath().c_str()};
         service::CacheServiceImpl cache_svc{encoder};
 
         const Stop why = Run(cache_svc, opts, sig_fd.Get(), parent_pipe.Get());

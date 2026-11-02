@@ -28,6 +28,7 @@ type GatewayOptions struct {
 
 type EngineOptions struct {
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout" json:"shutdown_timeout"`
+	ModelDirectory  string        `yaml:"model_directory" json:"model_directory"`
 	RpcServer       any           `yaml:"rpc_server" json:"rpc_server"`
 	Ivf             any           `yaml:"ivf" json:"ivf"`
 	Calibration     any           `yaml:"calibration" json:"calibration"`
