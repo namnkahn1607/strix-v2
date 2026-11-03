@@ -13,7 +13,7 @@
 namespace strix::ann {
 
 // clang-format off
-__attribute__((target("avx2,fma"))) void BatchDotProduct(
+__attribute__((always_inline)) __attribute__((target("avx2,fma"))) void BatchDotProduct(
     const float* __restrict query, const float* __restrict v0,
     const float* __restrict v1, const float* __restrict v2,
     const float* __restrict v3, float* __restrict scores) noexcept {
