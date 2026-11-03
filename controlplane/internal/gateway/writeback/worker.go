@@ -19,8 +19,7 @@ type WorkerPool struct {
 	closed bool
 }
 
-func NewWorkerPool(stub pb.CacheServiceClient, numWorkers int) *WorkerPool {
-	const queueCap = 1000
+func NewWorkerPool(stub pb.CacheServiceClient, numWorkers, queueCap int) *WorkerPool {
 	wp := &WorkerPool{queue: make(chan Job, queueCap)}
 
 	wp.wg.Add(numWorkers)
