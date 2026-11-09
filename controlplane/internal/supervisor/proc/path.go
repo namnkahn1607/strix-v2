@@ -22,7 +22,7 @@ func loadBinaryPath() (gateway, engine string, err error) {
 	return filepath.Join(binDir, gatewayBin), filepath.Join(binDir, engineBin), nil
 }
 
-func resolveModelDir(configPath, modelDir string) (string, error) {
+func ResolveModelDir(configPath, modelDir string) (string, error) {
 	if modelDir == "" {
 		return "", errors.New("model directory is not configured")
 	}

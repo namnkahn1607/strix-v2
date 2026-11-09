@@ -30,7 +30,7 @@ func Parse(path string) (*Options, error) {
 
 func (o *Options) applyDefaults() {
 	if o.Supervisor.DrainTimeout == 0 {
-		o.Supervisor.DrainTimeout = 6 * time.Second
+		o.Supervisor.DrainTimeout = 10 * time.Second
 	}
 	if o.Gateway.ShutdownTimeout == 0 {
 		o.Gateway.ShutdownTimeout = 5 * time.Second

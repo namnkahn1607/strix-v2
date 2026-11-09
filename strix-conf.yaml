@@ -1,8 +1,5 @@
 supervisor:
-  drain_timeout: 6s
-
-ipc:
-  socket_address: "unix:///tmp/strix.sock"
+  drain_timeout: 10s
 
 gateway:
   shutdown_timeout: 5s
