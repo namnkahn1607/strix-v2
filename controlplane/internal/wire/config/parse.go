@@ -30,7 +30,7 @@ func Parse(path string) (*Options, error) {
 
 func (o *Options) applyDefaults() {
 	if o.Supervisor.DrainTimeout == 0 {
-		o.Supervisor.DrainTimeout = 6 * time.Second
+		o.Supervisor.DrainTimeout = 10 * time.Second
 	}
 	if o.Gateway.ShutdownTimeout == 0 {
 		o.Gateway.ShutdownTimeout = 5 * time.Second
@@ -59,51 +59,57 @@ func (o *Options) applyDefaults() {
 func (o *Options) validate() error {
 	if o.Engine.ShutdownTimeout >= o.Gateway.ShutdownTimeout {
 		return fmt.Errorf(
-			"invalid config: engine_timeout (%s) must be smaller than gateway_timeout (%s)",
+			"engine_timeout (%s) must be smaller than gateway_timeout (%s)",
 			o.Engine.ShutdownTimeout, o.Gateway.ShutdownTimeout,
 		)
 	}
 	if o.Gateway.ShutdownTimeout > o.Supervisor.DrainTimeout {
 		return fmt.Errorf(
-			"invalid config: gateway timeout (%s) cannot be greater than drain_timeout (%s)",
+			"gateway timeout (%s) cannot be greater than drain_timeout (%s)",
 			o.Gateway.ShutdownTimeout, o.Supervisor.DrainTimeout,
+		)
+	}
+	if sum := o.Gateway.ShutdownTimeout + o.Engine.ShutdownTimeout; o.Supervisor.DrainTimeout <= sum {
+		return fmt.Errorf(
+			"drain_timeout (%s) must be longer than the total of gateway_timeout and engine_timeout (%s)",
+			o.Supervisor.DrainTimeout, sum,
 		)
 	}
 
 	if o.Engine.ModelDirectory == "" {
-		return errors.New("invalid config: engine.model_directory is not set")
+		return errors.New("engine.model_directory is not set")
 	}
 
 	if o.Gateway.Http.MaxReaderSize <= 0 {
-		return errors.New("invalid config: gateway.http.max_reader_size is not set")
+		return errors.New("gateway.http.max_reader_size is not set")
 	}
 	if o.Gateway.Writeback.PoolSize <= 0 {
-		return errors.New("invalid config: gateway.writeback.pool_size is not set")
+		return errors.New("gateway.writeback.pool_size is not set")
 	}
 	if o.Gateway.CachePolicy.MaxPromptLen <= 0 {
-		return errors.New("invalid config: gateway.cache_policy.max_prompt_len is not set")
+		return errors.New("gateway.cache_policy.max_prompt_len is not set")
 	}
 
 	const maxUpstreams = 8
 	if len(o.Upstreams) == 0 {
-		return errors.New("invalid config: at least 1 upstream are required")
+		return errors.New("at least 1 upstream are required")
 	}
 	if len(o.Upstreams) > maxUpstreams {
-		return fmt.Errorf("invalid config: at most %d upstreams are supported", maxUpstreams)
+		return fmt.Errorf("at most %d upstreams are supported", maxUpstreams)
 	}
 	for i, upstr := range o.Upstreams {
 		if upstr.Name == "" {
-			return fmt.Errorf("invalid config: upstream %d name is not set", i)
+			return fmt.Errorf("upstream %d name is not set", i)
 		}
 		if upstr.Type == "" {
-			return fmt.Errorf("invalid config: upstream %s type is not set", upstr.Name)
+			return fmt.Errorf("upstream %s type is not set", upstr.Name)
 		}
 		if upstr.Endpoint == "" {
-			return fmt.Errorf("invalid config: upstream %s endpoint is not set", upstr.Name)
+			return fmt.Errorf("upstream %s endpoint is not set", upstr.Name)
 		}
 		if upstr.AuthKind != "none" && upstr.AuthKeyEnvVar == "" {
 			return fmt.Errorf(
-				"invalid config: upstream %s has auth_kind %s, but auth_key_env_var is not set",
+				"upstream %s has auth_kind %s, but auth_key_env_var is not set",
 				upstr.Name, upstr.AuthKind,
 			)
 		}

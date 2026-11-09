@@ -1,5 +1,5 @@
 supervisor:
-  drain_timeout: 6s
+  drain_timeout: 10s
 
 ipc:
   socket_address: "unix:///tmp/strix.sock"
