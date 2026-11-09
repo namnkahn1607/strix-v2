@@ -106,9 +106,8 @@ nlohmann::json ReadConfig(int fd) {
         if (n == 0) throw std::runtime_error("parent closed pipe before sending config");
 
         const char* const end = chunk + n;
-        line.append(chunk);
-        const char* const nl = std::find(static_cast<const char*>(chunk), end, '\n');
-        line.append(nl);
+        const char* const nl  = std::find(static_cast<const char*>(chunk), end, '\n');
+        line.append(chunk, static_cast<std::size_t>(nl - chunk));
 
         if (line.size() > kMaxPipeBytes) throw std::runtime_error("config exceeds size limit");
         if (nl != end) break;
