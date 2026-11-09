@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strix/internal/wire/control"
 	"time"
 )
 
@@ -28,7 +29,29 @@ func New(sock string) *Client {
 	return &Client{http: &http.Client{Transport: tr}}
 }
 
-func (c *Client) do(ctx context.Context, method, path string, body any) (*http.Response, error) {
+func (c *Client) SetConfig(ctx context.Context, absPath string) error {
+	const (
+		uri    = "/v1/config"
+		method = http.MethodPut
+		wait   = 5 * time.Second
+	)
+
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, wait)
+	defer cancel()
+
+	body := control.ConfigRequest{Path: absPath}
+	resp, err := c.do(ctx, method, uri, body)
+	if err != nil {
+		return err
+	}
+	// What about http.Response.StatusCode?
+
+	_ = resp.Body.Close()
+	return nil
+}
+
+func (c *Client) do(ctx context.Context, method, uri string, body any) (*http.Response, error) {
 	var rd io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -38,7 +61,7 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (*http.R
 		rd = bytes.NewReader(b)
 	}
 
-	var url = "http://strix" + path
+	var url = "http://strix" + uri
 	req, err := http.NewRequestWithContext(ctx, method, url, rd)
 	if err != nil {
 		return nil, err

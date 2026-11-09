@@ -50,7 +50,7 @@ func LoadConfigPath() (string, error) {
 	data, err := os.ReadFile(configPathFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", errors.New("no config path set. Use 'strix config set <path>' first")
+			return "", errors.New("no config path set. Use 'strix config <path>' first")
 		}
 		return "", fmt.Errorf("read config path file: %w", err)
 	}
