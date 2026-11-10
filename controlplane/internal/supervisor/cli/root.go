@@ -30,8 +30,9 @@ func ControlSocketPath() string {
 	var dir string
 	if x := os.Getenv("XDG_RUNTIME_DIR"); x != "" {
 		dir = filepath.Join(x, "strix")
+	} else {
+		dir = filepath.Join("/tmp", fmt.Sprintf("strix-%d", os.Geteuid()))
 	}
-	dir = filepath.Join("/tmp", fmt.Sprintf("strix-%d", os.Geteuid()))
 
 	return filepath.Join(dir, file)
 }
