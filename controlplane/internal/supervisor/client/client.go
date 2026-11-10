@@ -57,6 +57,16 @@ func (c *Client) Stop(ctx context.Context) error {
 	})
 }
 
+func (c *Client) Quit(ctx context.Context) error {
+	return c.fire(&Request{
+		ctx:    ctx,
+		method: http.MethodPost,
+		uri:    "/v1/quit",
+		body:   nil,
+		wait:   10 * time.Second,
+	})
+}
+
 func (c *Client) fire(req *Request) error {
 	var ctx context.Context
 	if req.wait > 0 {
