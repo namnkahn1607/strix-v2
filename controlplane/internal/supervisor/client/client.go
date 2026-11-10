@@ -47,6 +47,10 @@ func (c *Client) SetConfig(ctx context.Context, absPath string) error {
 	})
 }
 
+func (c *Client) Serve(ctx context.Context, precacheFiles []string) error {
+	panic("unimplemented")
+}
+
 func (c *Client) Stop(ctx context.Context) error {
 	return c.fire(&Request{
 		ctx:    ctx,
