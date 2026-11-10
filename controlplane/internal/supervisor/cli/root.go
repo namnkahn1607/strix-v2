@@ -21,7 +21,7 @@ func Execute() error {
 }
 
 func init() {
-	rootCmd.AddCommand(configCmd)
+	rootCmd.AddCommand(configCmd, stopCmd)
 }
 
 func ControlSocketPath() string {

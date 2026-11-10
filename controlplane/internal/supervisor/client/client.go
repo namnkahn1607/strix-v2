@@ -16,6 +16,14 @@ type Client struct {
 	http *http.Client
 }
 
+type Request struct {
+	ctx    context.Context
+	method string
+	uri    string
+	body   any
+	wait   time.Duration
+}
+
 func New(sock string) *Client {
 	const dialTimeout = 2 * time.Second
 
@@ -30,46 +38,54 @@ func New(sock string) *Client {
 }
 
 func (c *Client) SetConfig(ctx context.Context, absPath string) error {
-	const (
-		uri    = "/v1/config"
-		method = http.MethodPut
-		wait   = 5 * time.Second
-	)
-
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, wait)
-	defer cancel()
-
-	body := control.ConfigRequest{Path: absPath}
-	resp, err := c.do(ctx, method, uri, body)
-	if err != nil {
-		return err
-	}
-	// What about http.Response.StatusCode?
-
-	_ = resp.Body.Close()
-	return nil
+	return c.fire(&Request{
+		ctx:    ctx,
+		method: http.MethodPut,
+		uri:    "/v1/config",
+		body:   control.ConfigRequest{Path: absPath},
+		wait:   5 * time.Second,
+	})
 }
 
-func (c *Client) do(ctx context.Context, method, uri string, body any) (*http.Response, error) {
+func (c *Client) Stop(ctx context.Context) error {
+	return c.fire(&Request{
+		ctx:    ctx,
+		method: http.MethodPost,
+		uri:    "/v1/stop",
+		body:   nil,
+		wait:   10 * time.Second,
+	})
+}
+
+func (c *Client) fire(req *Request) error {
+	var ctx context.Context
+	if req.wait > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(req.ctx, req.wait)
+		defer cancel()
+	}
+
 	var rd io.Reader
-	if body != nil {
-		b, err := json.Marshal(body)
+	if req.body != nil {
+		b, err := json.Marshal(req.body)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		rd = bytes.NewReader(b)
 	}
 
-	var url = "http://strix" + uri
-	req, err := http.NewRequestWithContext(ctx, method, url, rd)
+	var url = "http://strix" + req.uri
+	r, err := http.NewRequestWithContext(ctx, req.method, url, rd)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	resp, err := c.http.Do(req)
+	resp, err := c.http.Do(r)
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	return resp, nil
+	// What about http.Response.StatusCode != http.StatusOK?
+
+	_ = resp.Body.Close()
+	return nil
 }
