@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strix/internal/supervisor/client"
+	"strix/internal/wire/control"
 
 	"github.com/spf13/cobra"
 )
@@ -13,11 +16,17 @@ var rootCmd = &cobra.Command{
 	Short: "Strix - Semantic Cache Proxy CLI",
 }
 
-func Execute() error {
-	if err := rootCmd.Execute(); err != nil {
-		return err
+// Execute returns the exit code. Errors that did not come from a command's RunE are
+// cobra's own argument/flag/unknown-command failures, which are all usage errors.
+func Execute() (int, error) {
+	err := rootCmd.Execute()
+	if err == nil {
+		return control.ExitOK, nil
 	}
-	return nil
+	if ee, ok := errors.AsType[*client.Error](err); ok {
+		return ee.Code, err
+	}
+	return control.ExitUsage, err
 }
 
 func init() {
