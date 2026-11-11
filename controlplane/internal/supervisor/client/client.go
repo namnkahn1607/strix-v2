@@ -109,7 +109,7 @@ func (c *Client) fire(req *Request) error {
 }
 
 func decodeErr(resp *http.Response) error {
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	var eb control.ErrorBody
 	if err := json.NewDecoder(resp.Body).Decode(&eb); err != nil || eb.Error.Code == "" {
 		return &Error{
