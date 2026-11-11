@@ -14,6 +14,7 @@ const (
 	CodeInternal       ErrorCode = "internal"
 )
 
+// IsConflict reports state-conflict errors, which are HTTP 409 and CLI exit 4.
 func (c ErrorCode) IsConflict() bool {
 	switch c {
 	case CodeAlreadyServing, CodeNotRunning, CodeNotIdle:
