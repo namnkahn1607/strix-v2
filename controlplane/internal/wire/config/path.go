@@ -7,6 +7,11 @@ import (
 	"path/filepath"
 )
 
+const (
+	filename = "config_path"
+	subdir   = "strix"
+)
+
 func DefaultDir() (string, error) {
 	configHome := os.Getenv("XDG_CONFIG_HOME")
 	if configHome == "" {
@@ -17,7 +22,7 @@ func DefaultDir() (string, error) {
 		configHome = filepath.Join(homeDir, ".config")
 	}
 
-	return filepath.Join(configHome, "strix"), nil
+	return filepath.Join(configHome, subdir), nil
 }
 
 func SaveConfigPath(path string) error {
@@ -33,7 +38,7 @@ func SaveConfigPath(path string) error {
 
 	// Temp file in the same directory + rename: rename(2) is atomic only within one
 	// filesystem, so a crash mid-write never leaves a torn pointer.
-	tmp, err := os.CreateTemp(configDir, "config_path.tmp-*")
+	tmp, err := os.CreateTemp(configDir, fmt.Sprintf("%s.tmp-*", filename))
 	if err != nil {
 		return fmt.Errorf("create temp config path file: %w", err)
 	}
@@ -56,7 +61,7 @@ func SaveConfigPath(path string) error {
 		_ = os.Remove(tmpName)
 		return fmt.Errorf("close config path file: %w", err)
 	}
-	if err := os.Rename(tmpName, filepath.Join(configDir, "config_path")); err != nil {
+	if err := os.Rename(tmpName, filepath.Join(configDir, filename)); err != nil {
 		return fmt.Errorf("commit config path file: %w", err)
 	}
 
@@ -69,7 +74,7 @@ func LoadConfigPath() (string, error) {
 		return "", err
 	}
 
-	configPathFile := filepath.Join(configDir, "config_path")
+	configPathFile := filepath.Join(configDir, filename)
 	//nolint:gosec // G304: directory not resolving from external value
 	data, err := os.ReadFile(configPathFile)
 	if err != nil {
