@@ -1,5 +1,14 @@
 package control
 
+type State string
+
+const (
+	StateIdle     State = "Idle"
+	StateStarting State = "Starting"
+	StateRunning  State = "Running"
+	StateStopping State = "Stopping"
+)
+
 type ErrorCode string
 
 const (
@@ -22,6 +31,14 @@ func (c ErrorCode) IsConflict() bool {
 	}
 	return false
 }
+
+const (
+	PhaseConfig   = "config"
+	PhaseSpawn    = "spawn"
+	PhasePrecache = "precache"
+	PhaseRunning  = "running"
+	PhaseError    = "error"
+)
 
 const (
 	ExitOK       = 0
