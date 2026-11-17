@@ -1,3 +1,4 @@
+// Package control holds the control-API types shared by daemon and the thin client.
 package control
 
 import "fmt"
