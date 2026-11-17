@@ -2,6 +2,10 @@ package control
 
 import "fmt"
 
+type ConfigRequest struct {
+	Path string `json:"path"`
+}
+
 // APIError is used by daemon to encode error in returning response to CLI client.
 type APIError struct {
 	Code    ErrorCode `json:"code"`
