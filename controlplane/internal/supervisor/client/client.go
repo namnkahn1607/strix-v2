@@ -19,11 +19,10 @@ type Client struct {
 }
 
 type Request struct {
-	ctx    context.Context
-	method string
-	uri    string
-	body   any
-	wait   time.Duration
+	method  string
+	uri     string
+	body    any
+	timeout time.Duration
 }
 
 func New(sock string) *Client {
@@ -40,12 +39,11 @@ func New(sock string) *Client {
 }
 
 func (c *Client) SetConfig(ctx context.Context, absPath string) error {
-	return c.fire(&Request{
-		ctx:    ctx,
-		method: http.MethodPut,
-		uri:    "/v1/config",
-		body:   control.ConfigRequest{Path: absPath},
-		wait:   5 * time.Second,
+	return c.fire(ctx, &Request{
+		method:  http.MethodPut,
+		uri:     "/v1/config",
+		body:    control.ConfigRequest{Path: absPath},
+		timeout: 5 * time.Second,
 	})
 }
 
@@ -54,30 +52,27 @@ func (c *Client) Serve(ctx context.Context, precacheFiles []string) error {
 }
 
 func (c *Client) Stop(ctx context.Context) error {
-	return c.fire(&Request{
-		ctx:    ctx,
-		method: http.MethodPost,
-		uri:    "/v1/stop",
-		body:   nil,
-		wait:   10 * time.Second,
+	return c.fire(ctx, &Request{
+		method:  http.MethodPost,
+		uri:     "/v1/stop",
+		body:    nil,
+		timeout: 10 * time.Second,
 	})
 }
 
 func (c *Client) Quit(ctx context.Context) error {
-	return c.fire(&Request{
-		ctx:    ctx,
-		method: http.MethodPost,
-		uri:    "/v1/quit",
-		body:   nil,
-		wait:   10 * time.Second,
+	return c.fire(ctx, &Request{
+		method:  http.MethodPost,
+		uri:     "/v1/quit",
+		body:    nil,
+		timeout: 10 * time.Second,
 	})
 }
 
-func (c *Client) fire(req *Request) error {
-	var ctx context.Context
-	if req.wait > 0 {
+func (c *Client) fire(ctx context.Context, req *Request) error {
+	if req.timeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(req.ctx, req.wait)
+		ctx, cancel = context.WithTimeout(ctx, req.timeout)
 		defer cancel()
 	}
 
