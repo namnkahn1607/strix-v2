@@ -21,5 +21,6 @@ type Command struct {
 	Path     string
 	Files    []string
 	Precache bool
-	reply    chan Result
+	//nolint:unused // reason: idea prototype
+	reply chan Result
 }
