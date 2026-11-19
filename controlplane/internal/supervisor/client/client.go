@@ -25,6 +25,9 @@ type Request struct {
 	timeout time.Duration
 }
 
+// Extractor receives *http.Response and returns T + error.
+type Extractor[T any] func(resp *http.Response) (T, error)
+
 func New(sock string) *Client {
 	const dialTimeout = 2 * time.Second
 
@@ -39,7 +42,7 @@ func New(sock string) *Client {
 }
 
 func (c *Client) SetConfig(ctx context.Context, absPath string) error {
-	return c.fire(ctx, &Request{
+	return c.FireForget(ctx, &Request{
 		method:  http.MethodPut,
 		uri:     "/v1/config",
 		body:    control.ConfigRequest{Path: absPath},
@@ -52,7 +55,7 @@ func (c *Client) Serve(ctx context.Context, precacheFiles []string) error {
 }
 
 func (c *Client) Stop(ctx context.Context) error {
-	return c.fire(ctx, &Request{
+	return c.FireForget(ctx, &Request{
 		method:  http.MethodPost,
 		uri:     "/v1/stop",
 		body:    nil,
@@ -61,7 +64,7 @@ func (c *Client) Stop(ctx context.Context) error {
 }
 
 func (c *Client) Quit(ctx context.Context) error {
-	return c.fire(ctx, &Request{
+	return c.FireForget(ctx, &Request{
 		method:  http.MethodPost,
 		uri:     "/v1/quit",
 		body:    nil,
@@ -69,7 +72,29 @@ func (c *Client) Quit(ctx context.Context) error {
 	})
 }
 
-func (c *Client) fire(ctx context.Context, req *Request) error {
+func (c *Client) FireForget(ctx context.Context, req *Request) error {
+	return c.execute(ctx, req, nil)
+}
+
+func (c *Client) Do[T any](ctx context.Context, req *Request, extract Extractor[T]) (T, error) {
+	var zero T
+	if extract != nil {
+		return zero, errors.New("extractor cannot be null; use Client.FireForget instead")
+	}
+
+	var result T
+	err := c.execute(ctx, req, func(resp *http.Response) error {
+		var extractErr error
+		result, extractErr = extract(resp)
+		return extractErr
+	})
+	if err != nil {
+		return zero, err
+	}
+	return result, nil
+}
+
+func (c *Client) execute(ctx context.Context, req *Request, handleResp func(*http.Response) error) error {
 	if req.timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, req.timeout)
@@ -86,17 +111,21 @@ func (c *Client) fire(ctx context.Context, req *Request) error {
 	}
 
 	var url = "http://strix" + req.uri
-	r, err := http.NewRequestWithContext(ctx, req.method, url, rd)
+	httpReq, err := http.NewRequestWithContext(ctx, req.method, url, rd)
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.http.Do(r)
+	resp, err := c.http.Do(httpReq)
 	if err != nil {
 		return classify(err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return decodeErr(resp)
+	}
+
+	if handleResp != nil {
+		return handleResp(resp)
 	}
 
 	_ = resp.Body.Close()
