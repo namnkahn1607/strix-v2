@@ -30,7 +30,7 @@ func Execute() (int, error) {
 }
 
 func init() {
-	rootCmd.AddCommand(configCmd, stopCmd, quitCmd)
+	rootCmd.AddCommand(configCmd, serveCmd, statusCmd, stopCmd, quitCmd)
 }
 
 func ControlSocketPath() string {

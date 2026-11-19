@@ -1,7 +1,10 @@
 // Package control holds the control-API types shared by daemon and the thin client.
 package control
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // APIError is used by daemon to encode error in returning response to CLI client.
 type APIError struct {
@@ -17,6 +20,18 @@ type Pids struct {
 type Progress struct {
 	Done  int `json:"done"`
 	Total int `json:"total"`
+}
+
+// Snapshot is immutable once published.
+type Snapshot struct {
+	State       State     `json:"state"`
+	StartedAt   time.Time `json:"started_at"`
+	Uptime      string    `json:"uptime,omitempty"`
+	ConfigPath  string    `json:"config_path,omitempty"`
+	ConfigError string    `json:"config_error,omitempty"`
+	Pids        Pids      `json:"pids"`
+	Precache    *Progress `json:"precache,omitempty"`
+	LastError   string    `json:"last_error,omitempty"`
 }
 
 func (e *APIError) Error() string { return fmt.Sprintf("%s: %s", e.Code, e.Message) }

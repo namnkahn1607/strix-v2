@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+const dialTimeout = 2 * time.Second
+
 type Client struct {
 	http *http.Client
 }
@@ -25,12 +27,7 @@ type Request struct {
 	timeout time.Duration
 }
 
-// Extractor receives *http.Response and returns T + error.
-type Extractor[T any] func(resp *http.Response) (T, error)
-
 func New(sock string) *Client {
-	const dialTimeout = 2 * time.Second
-
 	tr := &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 			d := net.Dialer{Timeout: dialTimeout}
@@ -52,6 +49,22 @@ func (c *Client) SetConfig(ctx context.Context, absPath string) error {
 
 func (c *Client) Serve(ctx context.Context, precacheFiles []string) error {
 	panic("unimplemented")
+}
+
+func (c *Client) Status(ctx context.Context) (*control.Snapshot, error) {
+	ctx, cancel := context.WithTimeout(ctx, dialTimeout+3*time.Second)
+	defer cancel()
+
+	data, err := c.Do[control.Snapshot](ctx, &Request{
+		method:  http.MethodGet,
+		uri:     "/v1/status",
+		body:    nil,
+		timeout: 10 * time.Second,
+	})
+	if err != nil {
+		return nil, &Error{Code: control.ExitGeneral, Err: err}
+	}
+	return &data, nil
 }
 
 func (c *Client) Stop(ctx context.Context) error {
@@ -76,17 +89,13 @@ func (c *Client) FireForget(ctx context.Context, req *Request) error {
 	return c.execute(ctx, req, nil)
 }
 
-func (c *Client) Do[T any](ctx context.Context, req *Request, extract Extractor[T]) (T, error) {
-	var zero T
-	if extract != nil {
-		return zero, errors.New("extractor cannot be null; use Client.FireForget instead")
-	}
-
-	var result T
+func (c *Client) Do[T any](ctx context.Context, req *Request) (T, error) {
+	var (
+		zero   T
+		result T
+	)
 	err := c.execute(ctx, req, func(resp *http.Response) error {
-		var extractErr error
-		result, extractErr = extract(resp)
-		return extractErr
+		return json.NewDecoder(resp.Body).Decode(&result)
 	})
 	if err != nil {
 		return zero, err
