@@ -1,6 +1,6 @@
 module strix
 
-go 1.26.5
+go 1.27.4
 
 tool (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc
@@ -8,20 +8,16 @@ tool (
 )
 
 require (
+	github.com/buger/jsonparser v1.6.1
+	github.com/goccy/go-yaml v1.19.2
+	github.com/spf13/cobra v1.10.2
 	google.golang.org/grpc v1.85.0-dev.0.20260825072537-93e31b48545e
 	google.golang.org/protobuf v1.36.12
 )
 
-require github.com/goccy/go-yaml v1.19.2
-
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.9 // indirect
-)
-
-require (
-	github.com/buger/jsonparser v1.6.1
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
